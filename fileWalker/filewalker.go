@@ -47,6 +47,8 @@ func (obj *pathWalker) Walk(basePath string, eventWalk EventWalkFunc) {
 ///////////////////////////////////////////////////////////////////////////////
 
 func (obj *pathWalker) startWalk(basePath string) {
+	obj.monitor.WriteEvent("Data catalog: %s\n", basePath)
+
 	err := filepath.Walk(basePath, func(path string, info fs.FileInfo, err error) error {
 		if err != nil {
 			obj.monitor.WriteEvent("Prevent panic by handling failure accessing a path %q: %v\n", path, err)
