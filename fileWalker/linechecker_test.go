@@ -63,10 +63,10 @@ test:32:54.905000-0,EXCP,1,process=ragent,OSThread=3668,ClientID=4223,Exception=
 	}
 
 	var bufOut strings.Builder
-	sOut := func(s1 string, s2 string) {
-		bufOut.WriteString(s1)
-		bufOut.WriteString(":")
+	sOut := func(s1 string, s2 string, s3 string) {
 		bufOut.WriteString(s2)
+		bufOut.WriteString(":")
+		bufOut.WriteString(s3)
 		bufOut.WriteString("\n")
 	}
 	for _, tt := range tests {
@@ -115,9 +115,7 @@ func Benchmark_processStream(b *testing.B) {
 	}
 
 	streamIn := strings.NewReader(bufferIn.String())
-	streamOut := func(string, string) {
-
-	}
+	streamOut := func(string, string, string) {	}
 	check.init(mockIsCancel, new(mockMonitor))
 
 	b.SetBytes(streamIn.Size())

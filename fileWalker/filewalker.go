@@ -13,7 +13,7 @@ type Monitor interface {
 	NewData(size int64)
 	FinishedData(count, size int64)
 }
-type EventWalkFunc func(string, string)
+type EventWalkFunc func(string, string, string)
 
 type pathWalker struct {
 	rootPath string

@@ -27,7 +27,7 @@ type monitor struct {
 func GetLogger(isCancelFunc CancelFunc) *monitor {
 	obj := new(monitor)
 	obj.startTime = time.Now()
-	obj.ticker = time.NewTicker(100 * time.Millisecond)
+	obj.ticker = time.NewTicker(500 * time.Millisecond)
 	obj.done = make(chan bool)
 
 	obj.isCancel = isCancelFunc
@@ -85,19 +85,23 @@ func (obj *monitor) print() {
 		deltaDuration := totalDuration - prevDuration
 		if deltaDuration.Seconds() > 0 {
 			speed = 1000 * (obj.sizeFinished - prevFinishedSize) / deltaDuration.Milliseconds()
+			if deltaDuration.Seconds() < 1 {
+				speed = 1000 * speed / deltaDuration.Milliseconds()
+			}
 		}
 		if deltaDuration.Seconds() > 1 {
 			prevDuration = totalDuration
 			prevFinishedSize = obj.sizeFinished
 		}
+
 		for i := range obj.messageBuffer {
 			fmt.Fprint(os.Stderr, obj.messageBuffer[i])
 		}
 		obj.messageBuffer = obj.messageBuffer[:0]
 
 		fmt.Fprintf(os.Stderr,
-			"%s %s [%s/s]                           \r",
-			byteCount(obj.sizeTotal), totalDuration,
+			"%s/%s %s [%s/s]                           \r",
+			byteCount(obj.sizeFinished), byteCount(obj.sizeTotal), totalDuration,
 			byteCount(speed))
 
 		// fmt.Fprintf(os.Stderr,
@@ -138,13 +142,13 @@ func (obj *monitor) print() {
 func byteCount(b int64) string {
 	const unit = 1000
 	if b < unit {
-		return fmt.Sprintf("%dB", b)
+		return fmt.Sprintf("%db", b)
 	}
 	div, exp := int64(unit), 0
 	for n := b / unit; n >= unit; n /= unit {
 		div *= unit
 		exp++
 	}
-	return fmt.Sprintf("%.1f%cB",
+	return fmt.Sprintf("%.1f%cb",
 		float64(b)/float64(div), "kMGTPE"[exp])
 }

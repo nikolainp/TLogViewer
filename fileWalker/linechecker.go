@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"bytes"
 	"io"
+	"path/filepath"
 	"sync"
 )
 
@@ -17,11 +18,11 @@ type lineChecker struct {
 	chBuf   chan streamBuffer
 
 	isCancel CancelFunc
-	monitor   Monitor
+	monitor  Monitor
 
-	bufSize          int
-	prefixFirstLine  string
-	prefixSecondLine []byte
+	bufSize           int
+	catalog, fileName string
+	prefixSecondLine  []byte
 }
 
 func (obj *lineChecker) init(isCancelFunc CancelFunc, monitor Monitor) {
@@ -47,7 +48,8 @@ func (obj *lineChecker) processStream(sName string, sIn io.Reader, fOut EventWal
 		}()
 	}
 
-	obj.prefixFirstLine = sName
+	obj.catalog = filepath.Dir(sName)
+	obj.fileName = filepath.Base(sName)
 	obj.prefixSecondLine = []byte("<line>")
 
 	obj.chBuf = make(chan streamBuffer, 1)
@@ -163,7 +165,7 @@ func (obj *lineChecker) lineProcessor(buf *bytes.Buffer, data []byte, writer Eve
 
 func (obj *lineChecker) writeEvent(buf *bytes.Buffer, writer EventWalkFunc) {
 	if 0 < buf.Len() {
-		writer(obj.prefixFirstLine, buf.String())
+		writer(obj.catalog, obj.fileName, buf.String())
 	}
 	buf.Reset()
 }
