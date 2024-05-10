@@ -9,6 +9,7 @@ import (
 	"github.com/nikolainp/TLogViewer/config"
 	filewalker "github.com/nikolainp/TLogViewer/fileWalker"
 	logobserver "github.com/nikolainp/TLogViewer/logObserver"
+	"github.com/nikolainp/TLogViewer/monitor"
 )
 
 var (
@@ -38,10 +39,13 @@ func init() {
 func main() {
 	conf := getConfig(os.Args)
 
+	monitor := monitor.GetLogger(isCancel)
 	observer := logobserver.GetLogObserver()
-	walker := filewalker.GetFileWalker(isCancel)
-	
+	walker := filewalker.GetFileWalker(isCancel, monitor)
+
+	monitor.Start()
 	walker.Walk(conf.DataPath, observer.ConsiderEvent)
+	monitor.Stop()
 }
 
 ///////////////////////////////////////////////////////////////////////////////

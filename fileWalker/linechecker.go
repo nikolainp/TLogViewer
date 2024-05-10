@@ -17,16 +17,18 @@ type lineChecker struct {
 	chBuf   chan streamBuffer
 
 	isCancel CancelFunc
+	monitor   Monitor
 
 	bufSize          int
 	prefixFirstLine  string
 	prefixSecondLine []byte
 }
 
-func (obj *lineChecker) init(isCancelFunc CancelFunc) {
+func (obj *lineChecker) init(isCancelFunc CancelFunc, monitor Monitor) {
 	obj.bufSize = 1024 * 1024 * 10
 
 	obj.isCancel = isCancelFunc
+	obj.monitor = monitor
 
 	obj.poolBuf = sync.Pool{New: func() interface{} {
 		lines := make([]byte, obj.bufSize)
@@ -76,8 +78,10 @@ func (obj *lineChecker) doRead(sIn io.Reader) {
 	for {
 		buf := obj.poolBuf.Get().(*[]byte)
 		if n := readBuffer(*buf); n == 0 {
+			obj.monitor.FinishedData(1, 0)
 			break
 		} else {
+			obj.monitor.FinishedData(0, int64(n))
 			obj.chBuf <- streamBuffer{buf, n}
 		}
 	}
