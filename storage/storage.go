@@ -32,6 +32,16 @@ func New(storagePath string) (*Storage, error) {
 	return db, nil
 }
 
+func (obj *Storage) WriteProcess(name, catalog, process string, pid, port int) error {
+	query := "INSERT INTO processes (name, catalog, process, pid, port) VALUES (?,?,?,?,?)"
+
+	if _, err := obj.db.Exec(query, name, catalog, process, pid, port); err != nil {
+		return fmt.Errorf("writeProcess: %w", err)
+	}
+
+	return nil
+}
+
 ///////////////////////////////////////////////////////////////////////////////
 
 func (obj *Storage) create(stroragePath string) error {

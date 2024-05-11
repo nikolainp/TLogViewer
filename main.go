@@ -31,9 +31,7 @@ func init() {
 		signal := <-signChan
 		// Run Cleanup
 		fmt.Fprintf(os.Stderr, "\nCaptured %v, stopping and exiting...\n", signal)
-		cancelChan <- true
-		close(cancelChan)
-		os.Exit(0)
+		cancelAndExit()
 	}()
 }
 
@@ -41,16 +39,13 @@ func main() {
 	conf := getConfig(os.Args)
 
 	monitor := monitor.New(isCancel)
-	observer := logobserver.New()
+	observer := logobserver.New(isCancel)
 	walker := filewalker.New(isCancel, monitor)
 
 	monitor.Start()
-	_, err := storage.New(conf.DataPath)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Storage error: %v\n", err)
-		os.Exit(0)
-	}
+	getStorage(conf.DataPath)
 	walker.Walk(conf.DataPath, observer.ConsiderEvent)
+	observer.FlushAll()
 	monitor.Stop()
 }
 
@@ -74,6 +69,12 @@ func getConfig(args []string) config.Config {
 	return conf
 }
 
+func cancelAndExit() {
+	cancelChan <- true
+	close(cancelChan)
+	os.Exit(0)
+}
+
 func isCancel() bool {
 	select {
 	case _, ok := <-cancelChan:
@@ -84,3 +85,14 @@ func isCancel() bool {
 }
 
 ///////////////////////////////////////////////////////////////////////////////
+
+func getStorage(path string) *storage.Storage {
+
+	db, err := storage.New(path)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Storage error: %v\n", err)
+		cancelAndExit()
+	}
+
+	return db
+}

@@ -40,6 +40,13 @@ func (obj *lineChecker) init(isCancelFunc CancelFunc, monitor Monitor) {
 func (obj *lineChecker) processStream(sName string, sIn io.Reader, fOut EventWalkFunc) {
 	var wg sync.WaitGroup
 
+	splitPath := func(name string) (catalog, file string) {
+		catalog, file = filepath.Split(name)
+		catalog1 := filepath.Base(filepath.Dir(filepath.Clean(catalog)))
+		catalog2 := filepath.Base(catalog)
+		catalog = filepath.Join(catalog1, catalog2)
+		return
+	}
 	goFunc := func(work func()) {
 		wg.Add(1)
 		go func() {
@@ -48,8 +55,7 @@ func (obj *lineChecker) processStream(sName string, sIn io.Reader, fOut EventWal
 		}()
 	}
 
-	obj.catalog = filepath.Dir(sName)
-	obj.fileName = filepath.Base(sName)
+	obj.catalog, obj.fileName = splitPath(sName)
 	obj.prefixSecondLine = []byte("<line>")
 
 	obj.chBuf = make(chan streamBuffer, 1)

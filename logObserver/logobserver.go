@@ -1,12 +1,46 @@
 package logobserver
 
-type supervisor struct {
+import "sync"
+
+type Storage interface {
+	WriteProcess(name, catalog, process string, pid, port int) error
 }
 
-func New() (obj supervisor) {
-	return
+type CancelFunc func() bool
+
+type supervisor struct {
+	worker *processor
+	events chanEvents
+
+	isCancel CancelFunc
+	wg       sync.WaitGroup
+}
+
+func New(isCancelFunc CancelFunc) (obj *supervisor) {
+
+	obj = new(supervisor)
+	obj.events = make(chanEvents)
+	obj.isCancel = isCancelFunc
+
+	goFunc := func(work func()) {
+		obj.wg.Add(1)
+		go func() {
+			defer obj.wg.Done()
+			work()
+		}()
+	}
+
+	obj.worker = new(processor)
+	obj.worker.init(obj.isCancel)
+	goFunc(func() { obj.worker.start(obj.events) })
+
+	return obj
+}
+
+func (obj *supervisor) FlushAll() {
+	obj.wg.Wait()
 }
 
 func (obj *supervisor) ConsiderEvent(catalog string, fileName string, eventData string) {
-
+	obj.events <- event{catalog: catalog, fileName: fileName, eventData: eventData}
 }
