@@ -26,7 +26,7 @@ type pathWalker struct {
 
 ///////////////////////////////////////////////////////////////////////////////
 
-func GetFileWalker(isCancelFunc CancelFunc, monitor Monitor) (obj pathWalker) {
+func New(isCancelFunc CancelFunc, monitor Monitor) (obj pathWalker) {
 	obj.isCancel = isCancelFunc
 	obj.monitor = monitor
 

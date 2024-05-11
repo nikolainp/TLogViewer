@@ -1,10 +1,9 @@
 package logobserver
 
 type supervisor struct {
-
 }
 
-func GetLogObserver() (obj supervisor) {
+func New() (obj supervisor) {
 	return
 }
 

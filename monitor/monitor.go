@@ -24,7 +24,7 @@ type monitor struct {
 	isCancel CancelFunc
 }
 
-func GetLogger(isCancelFunc CancelFunc) *monitor {
+func New(isCancelFunc CancelFunc) *monitor {
 	obj := new(monitor)
 	obj.startTime = time.Now()
 	obj.ticker = time.NewTicker(500 * time.Millisecond)

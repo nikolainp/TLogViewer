@@ -19,7 +19,7 @@ type Config struct {
 	DataPath string
 }
 
-func GetConfig(args []string) (obj Config, err error) {
+func New(args []string) (obj Config, err error) {
 	var isPrintVersion bool
 
 	obj.programName = args[0]

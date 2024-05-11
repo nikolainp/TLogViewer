@@ -10,6 +10,7 @@ import (
 	filewalker "github.com/nikolainp/TLogViewer/fileWalker"
 	logobserver "github.com/nikolainp/TLogViewer/logObserver"
 	"github.com/nikolainp/TLogViewer/monitor"
+	"github.com/nikolainp/TLogViewer/storage"
 )
 
 var (
@@ -39,11 +40,16 @@ func init() {
 func main() {
 	conf := getConfig(os.Args)
 
-	monitor := monitor.GetLogger(isCancel)
-	observer := logobserver.GetLogObserver()
-	walker := filewalker.GetFileWalker(isCancel, monitor)
+	monitor := monitor.New(isCancel)
+	observer := logobserver.New()
+	walker := filewalker.New(isCancel, monitor)
 
 	monitor.Start()
+	_, err := storage.New(conf.DataPath)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Storage error: %v\n", err)
+		os.Exit(0)
+	}
 	walker.Walk(conf.DataPath, observer.ConsiderEvent)
 	monitor.Stop()
 }
@@ -51,7 +57,7 @@ func main() {
 ///////////////////////////////////////////////////////////////////////////////
 
 func getConfig(args []string) config.Config {
-	conf, err := config.GetConfig(args)
+	conf, err := config.New(args)
 
 	if err != nil {
 		switch err := err.(type) {
