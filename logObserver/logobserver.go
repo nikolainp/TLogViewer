@@ -1,6 +1,8 @@
 package logobserver
 
-import "sync"
+import (
+	"sync"
+)
 
 type Storage interface {
 	WriteProcess(name, catalog, process string, pid, port int) error
@@ -12,14 +14,17 @@ type supervisor struct {
 	worker *processor
 	events chanEvents
 
+	storage Storage
+
 	isCancel CancelFunc
 	wg       sync.WaitGroup
 }
 
-func New(isCancelFunc CancelFunc) (obj *supervisor) {
+func New(isCancelFunc CancelFunc, storage Storage) (obj *supervisor) {
 
 	obj = new(supervisor)
 	obj.events = make(chanEvents)
+	obj.storage = storage
 	obj.isCancel = isCancelFunc
 
 	goFunc := func(work func()) {
@@ -38,6 +43,7 @@ func New(isCancelFunc CancelFunc) (obj *supervisor) {
 }
 
 func (obj *supervisor) FlushAll() {
+	close(obj.events)
 	obj.wg.Wait()
 }
 

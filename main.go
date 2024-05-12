@@ -39,11 +39,10 @@ func main() {
 	conf := getConfig(os.Args)
 
 	monitor := monitor.New(isCancel)
-	observer := logobserver.New(isCancel)
 	walker := filewalker.New(isCancel, monitor)
 
 	monitor.Start()
-	getStorage(conf.DataPath)
+	observer := logobserver.New(isCancel, getStorage(conf.DataPath))
 	walker.Walk(conf.DataPath, observer.ConsiderEvent)
 	observer.FlushAll()
 	monitor.Stop()

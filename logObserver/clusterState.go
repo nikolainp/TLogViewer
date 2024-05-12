@@ -4,6 +4,7 @@ import "path/filepath"
 
 type clusterState struct {
 	processes map[string]*clusterProcess
+	curProcess *clusterProcess
 }
 
 func (obj *clusterState) init() {
@@ -12,10 +13,15 @@ func (obj *clusterState) init() {
 
 func (obj *clusterState) addEvent(data event) {
 
+	if obj.curProcess.name == data.catalog {
+		return
+	}
+
 	if process, ok := obj.processes[data.catalog]; ok {
 		process.addEvent(data)
 	} else {
-		obj.processes[data.catalog] = newClusterProcess(data)
+		obj.curProcess = newClusterProcess(data)
+		obj.processes[data.catalog] = obj.curProcess
 	}
 }
 
