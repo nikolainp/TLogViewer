@@ -11,6 +11,7 @@ import (
 	logobserver "github.com/nikolainp/TLogViewer/logObserver"
 	"github.com/nikolainp/TLogViewer/monitor"
 	"github.com/nikolainp/TLogViewer/storage"
+	webreporter "github.com/nikolainp/TLogViewer/webReporter"
 )
 
 var (
@@ -42,10 +43,14 @@ func main() {
 	walker := filewalker.New(isCancel, monitor)
 
 	monitor.Start()
-	observer := logobserver.New(isCancel, getStorage(conf.DataPath))
+	storage := getStorage(conf.DataPath)
+	observer := logobserver.New(isCancel, storage)
 	walker.Walk(conf.DataPath, observer.ConsiderEvent)
 	observer.FlushAll()
 	monitor.Stop()
+
+	reporter := webreporter.New(storage)
+	reporter.Start()
 }
 
 ///////////////////////////////////////////////////////////////////////////////

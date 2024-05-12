@@ -36,7 +36,7 @@ func New(isCancelFunc CancelFunc, storage Storage) (obj *supervisor) {
 	}
 
 	obj.worker = new(processor)
-	obj.worker.init(obj.isCancel)
+	obj.worker.init(obj.isCancel, storage)
 	goFunc(func() { obj.worker.start(obj.events) })
 
 	return obj
