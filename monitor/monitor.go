@@ -11,6 +11,7 @@ type CancelFunc func() bool
 
 type monitor struct {
 	filesTotal    int64
+	filesFinished int64
 	sizeTotal     int64
 	sizeFinished  int64
 	messageBuffer []string
@@ -55,6 +56,7 @@ func (obj *monitor) FinishedData(count, size int64) {
 	defer obj.mu.Unlock()
 	obj.mu.Lock()
 
+	obj.filesFinished += count
 	obj.sizeFinished += size
 }
 
@@ -84,8 +86,11 @@ func (obj *monitor) print() {
 		obj.mu.Lock()
 
 		var speed int64
+		var totalSpeed int64
 
 		totalDuration := time.Since(obj.startTime)
+		totalSpeed = 1000 * obj.sizeFinished / totalDuration.Milliseconds()
+
 		deltaDuration := totalDuration - prevDuration
 		if deltaDuration.Seconds() > 0 {
 			speed = 1000 * (obj.sizeFinished - prevFinishedSize) / deltaDuration.Milliseconds()
@@ -104,9 +109,10 @@ func (obj *monitor) print() {
 		obj.messageBuffer = obj.messageBuffer[:0]
 
 		fmt.Fprintf(os.Stderr,
-			"%s/%s %s [%s/s]                           \r",
+			"files: %d/%d size: %s/%s time: %s [speed %s/s/%s/s ]                           \r",
+			obj.filesFinished, obj.filesTotal,
 			byteCount(obj.sizeFinished), byteCount(obj.sizeTotal), totalDuration,
-			byteCount(speed))
+			byteCount(speed), byteCount(totalSpeed))
 
 		// fmt.Fprintf(os.Stderr,
 		// 	"%s %s [%f]: in work: %d finished: %d\r",
