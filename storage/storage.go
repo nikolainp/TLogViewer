@@ -32,6 +32,49 @@ func New(storagePath string) (*Storage, error) {
 	return db, nil
 }
 
+func Open(storagePath string) (*Storage, error) {
+
+	dbPath := filepath.Clean(storagePath) + ".db"
+	db := new(Storage)
+	if err := db.create(dbPath); err != nil {
+		return nil, err
+	}
+
+	return db, nil
+}
+
+type Process struct {
+	Name    string
+	Catalog string
+	Process string
+	Pid     int
+	Port    int
+}
+
+func (obj *Storage) SelectAllProcesses() (data []Process, err error) {
+	query := "SELECT name, catalog, process, pid, port FROM processes"
+
+	var name string
+	var catalog string
+	var process string
+	var pid int
+	var port int
+
+	data = make([]Process, 0)
+
+	rows, err := obj.db.Query(query)
+	if err != nil {
+		return nil, fmt.Errorf("selectAllProcess: %w", err)
+	}
+
+	for rows.Next() {
+		rows.Scan(&name, &catalog, &process, &pid, &port)
+		data = append(data, Process{name, catalog, process, pid, port})
+	}
+
+	return
+}
+
 func (obj *Storage) WriteProcess(name, catalog, process string, pid, port int) error {
 	query := "INSERT INTO processes (name, catalog, process, pid, port) VALUES (?,?,?,?,?)"
 

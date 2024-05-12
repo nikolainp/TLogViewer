@@ -2,18 +2,19 @@ package webreporter
 
 import (
 	"fmt"
+	"html/template"
+	"log"
 	"net/http"
+
+	"github.com/nikolainp/TLogViewer/storage"
 )
 
-type Storage interface {
-}
-
 type WebReporter struct {
-	storage Storage
+	storage *storage.Storage
 	srv     http.Server
 }
 
-func New(storage Storage) *WebReporter {
+func New(storage *storage.Storage) *WebReporter {
 	obj := new(WebReporter)
 
 	obj.storage = storage
@@ -33,14 +34,28 @@ func (obj *WebReporter) Start() {
 
 func (obj *WebReporter) getHandlers() *http.ServeMux {
 	sm := http.NewServeMux()
-	sm.HandleFunc("/", obj.hello)
+	sm.HandleFunc("/", obj.rootPage)
 	sm.HandleFunc("/headers", obj.headers)
 	return sm
 }
 
-func (obj *WebReporter) hello(w http.ResponseWriter, req *http.Request) {
+func (obj *WebReporter) rootPage(w http.ResponseWriter, req *http.Request) {
 
-	fmt.Fprintf(w, "hello\n")
+	dataGraph, err := template.New("dataGraph").Parse(rootPageTemplate)
+	checkErr(err)
+
+	processes, err := obj.storage.SelectAllProcesses()
+	checkErr(err)
+
+	data := struct {
+		Processes []storage.Process
+	}{
+		Processes: processes,
+	}
+
+	err = dataGraph.Execute(w, data)
+	checkErr(err)
+
 }
 
 func (obj *WebReporter) headers(w http.ResponseWriter, req *http.Request) {
@@ -51,3 +66,15 @@ func (obj *WebReporter) headers(w http.ResponseWriter, req *http.Request) {
 		}
 	}
 }
+
+var checkErr = func(err error) {
+	if err != nil {
+		log.Fatal(err)
+	}
+}
+
+const rootPageTemplate = `
+{{range $process := .Processes -}}
+{{$process.Name}}
+{{end}}
+`

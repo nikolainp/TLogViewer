@@ -37,17 +37,23 @@ func init() {
 }
 
 func main() {
+	var storage *storage.Storage
+
 	conf := getConfig(os.Args)
 
-	monitor := monitor.New(isCancel)
-	walker := filewalker.New(isCancel, monitor)
+	if !conf.ShowReportOnly {
+		monitor := monitor.New(isCancel)
+		walker := filewalker.New(isCancel, monitor)
 
-	monitor.Start()
-	storage := getStorage(conf.DataPath)
-	observer := logobserver.New(isCancel, storage)
-	walker.Walk(conf.DataPath, observer.ConsiderEvent)
-	observer.FlushAll()
-	monitor.Stop()
+		monitor.Start()
+		storage = getNewStorage(conf.DataPath)
+		observer := logobserver.New(isCancel, storage)
+		walker.Walk(conf.DataPath, observer.ConsiderEvent)
+		observer.FlushAll()
+		monitor.Stop()
+	} else {
+		storage = getOldStorage(conf.DataPath)
+	}
 
 	reporter := webreporter.New(storage)
 	reporter.Start()
@@ -90,9 +96,20 @@ func isCancel() bool {
 
 ///////////////////////////////////////////////////////////////////////////////
 
-func getStorage(path string) *storage.Storage {
+func getNewStorage(path string) *storage.Storage {
 
 	db, err := storage.New(path)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Storage error: %v\n", err)
+		cancelAndExit()
+	}
+
+	return db
+}
+
+func getOldStorage(path string) *storage.Storage {
+
+	db, err := storage.Open(path)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Storage error: %v\n", err)
 		cancelAndExit()

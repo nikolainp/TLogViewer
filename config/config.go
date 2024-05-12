@@ -16,7 +16,8 @@ type PrintVersion struct {
 type Config struct {
 	programName string
 
-	DataPath string
+	DataPath       string
+	ShowReportOnly bool
 }
 
 func New(args []string) (obj Config, err error) {
@@ -28,6 +29,7 @@ func New(args []string) (obj Config, err error) {
 	fs := flag.NewFlagSet(args[0], flag.ContinueOnError)
 	fs.SetOutput(fsOut)
 	fs.BoolVar(&isPrintVersion, "v", false, "print version")
+	fs.BoolVar(&obj.ShowReportOnly, "r", false, "just show report")
 
 	if err = fs.Parse(args[1:]); err != nil {
 		err = PrintUsage{Usage: fsOut.String()}
