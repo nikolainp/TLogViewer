@@ -7,11 +7,11 @@ import (
 	"path/filepath"
 )
 
-type CancelFunc func() bool
 type Monitor interface {
 	WriteEvent(frmt string, args ...any)
 	NewData(size int64)
 	FinishedData(count, size int64)
+	IsCancel() bool
 }
 type EventWalkFunc func(string, string, string)
 
@@ -19,18 +19,16 @@ type pathWalker struct {
 	rootPath string
 	check    lineChecker
 
-	isCancel  CancelFunc
 	monitor   Monitor
 	eventWalk EventWalkFunc
 }
 
 ///////////////////////////////////////////////////////////////////////////////
 
-func New(isCancelFunc CancelFunc, monitor Monitor) (obj pathWalker) {
-	obj.isCancel = isCancelFunc
+func New(monitor Monitor) (obj pathWalker) {
 	obj.monitor = monitor
 
-	obj.check.init(isCancelFunc, monitor)
+	obj.check.init(monitor)
 
 	return
 }
@@ -61,7 +59,7 @@ func (obj *pathWalker) startWalk(basePath string) {
 		obj.monitor.NewData(info.Size())
 		obj.processFile(path)
 
-		if obj.isCancel() {
+		if obj.monitor.IsCancel() {
 			return fmt.Errorf("process is cancel")
 		}
 

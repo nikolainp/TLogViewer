@@ -43,7 +43,7 @@ func main() {
 
 	if !conf.ShowReportOnly {
 		monitor := monitor.New(isCancel)
-		walker := filewalker.New(isCancel, monitor)
+		walker := filewalker.New(monitor)
 
 		monitor.Start()
 		storage = getNewStorage(conf.DataPath)

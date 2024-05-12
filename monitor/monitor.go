@@ -69,6 +69,10 @@ func (obj *monitor) Stop() {
 	obj.wg.Wait()
 }
 
+func (obj *monitor) IsCancel() bool {
+	return obj.isCancel()
+}
+
 ///////////////////////////////////////////////////////////////////////////////
 
 func (obj *monitor) print() {
