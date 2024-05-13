@@ -3,6 +3,7 @@ package config
 import (
 	"bytes"
 	"flag"
+	"path/filepath"
 )
 
 type PrintUsage struct {
@@ -17,6 +18,7 @@ type Config struct {
 	programName string
 
 	DataPath       string
+	StoragePath    string
 	ShowReportOnly bool
 }
 
@@ -46,7 +48,8 @@ func New(args []string) (obj Config, err error) {
 		return
 	}
 
-	obj.DataPath = fs.Arg(0)
+	obj.DataPath = filepath.Clean(fs.Arg(0))
+	obj.StoragePath = obj.DataPath + ".report"
 
 	return
 }

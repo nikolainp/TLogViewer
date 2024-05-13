@@ -1,13 +1,16 @@
 package logobserver
 
-import "time"
+import (
+	"fmt"
+	"time"
+)
 
 type event struct {
 	catalog   string
 	fileName  string
 	eventData string
 
-	eventTime time.Time
+	eventStopTime time.Time
 }
 type chanEvents chan event
 
@@ -16,11 +19,11 @@ type processor struct {
 
 	storage Storage
 
-	isCancel CancelFunc
+	monitor Monitor
 }
 
-func (obj *processor) init(isCancelFunc CancelFunc, storage Storage) {
-	obj.isCancel = isCancelFunc
+func (obj *processor) init(monitor Monitor, storage Storage) {
+	obj.monitor = monitor
 
 	obj.storage = storage
 
@@ -35,16 +38,31 @@ func (obj *processor) start(events chanEvents) {
 				return
 			}
 
-			data.addProperties()
+			if err := data.addProperties(); err != nil {
+				obj.monitor.WriteEvent("error event: %s: %s:\n%s\n%w\n", data.catalog, data.fileName, data.eventData, err)
+				continue
+			}
 			obj.clusterState.addEvent(data)
 		}
 
-		if obj.isCancel() {
+		if obj.monitor.IsCancel() {
 			return
 		}
 	}
 }
 
-func (obj *event) addProperties() {
-	obj.eventTime = time.Now()
+func (obj *event) addProperties() error {
+	if len(obj.eventData) < 12 {
+		return fmt.Errorf("short event")
+	}
+	strLineTime := obj.fileName + ":" + obj.eventData[:12]
+
+	stopTime, err := time.ParseInLocation("06010215.log:04:05", string(strLineTime), time.Local)
+	if err != nil {
+		return err
+	}
+
+	obj.eventStopTime = stopTime
+
+	return nil
 }

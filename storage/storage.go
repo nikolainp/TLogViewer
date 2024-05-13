@@ -4,7 +4,6 @@ import (
 	"database/sql"
 	"fmt"
 	"os"
-	"path/filepath"
 
 	_ "github.com/mattn/go-sqlite3"
 )
@@ -14,15 +13,14 @@ type Storage struct {
 }
 
 // Конструктор Storage
-func New(storagePath string) (*Storage, error) {
+func New(stroragePath string) (*Storage, error) {
 
-	dbPath := filepath.Clean(storagePath) + ".db"
-	if err := os.Remove(dbPath); err != nil && !os.IsNotExist(err) {
+	if err := os.Remove(stroragePath); err != nil && !os.IsNotExist(err) {
 		return nil, fmt.Errorf("clear storage: %v", err)
 	}
 
 	db := new(Storage)
-	if err := db.create(dbPath); err != nil {
+	if err := db.create(stroragePath); err != nil {
 		return nil, err
 	}
 	if err := db.init(); err != nil {
@@ -32,11 +30,14 @@ func New(storagePath string) (*Storage, error) {
 	return db, nil
 }
 
-func Open(storagePath string) (*Storage, error) {
+func Open(stroragePath string) (*Storage, error) {
 
-	dbPath := filepath.Clean(storagePath) + ".db"
+	if _, err := os.Stat(stroragePath); err != nil {
+		return nil, fmt.Errorf("open storage: %v", err)
+	}
+
 	db := new(Storage)
-	if err := db.create(dbPath); err != nil {
+	if err := db.create(stroragePath); err != nil {
 		return nil, err
 	}
 

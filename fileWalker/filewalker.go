@@ -50,8 +50,6 @@ func (obj *pathWalker) Walk(basePath string, eventWalk EventWalkFunc) {
 func (obj *pathWalker) startWalk(basePath string) {
 	var wg sync.WaitGroup
 
-	obj.monitor.WriteEvent("Data catalog: %s\n", basePath)
-
 	goFunc := func(work func()) {
 		wg.Add(1)
 		go func() {

@@ -4,11 +4,16 @@ import (
 	"sync"
 )
 
+type Monitor interface {
+	WriteEvent(frmt string, args ...any)
+	NewData(size int64)
+	FinishedData(count, size int64)
+	IsCancel() bool
+}
+
 type Storage interface {
 	WriteProcess(name, catalog, process string, pid, port int) error
 }
-
-type CancelFunc func() bool
 
 type supervisor struct {
 	worker *processor
@@ -16,16 +21,16 @@ type supervisor struct {
 
 	storage Storage
 
-	isCancel CancelFunc
-	wg       sync.WaitGroup
+	monitor Monitor
+	wg      sync.WaitGroup
 }
 
-func New(isCancelFunc CancelFunc, storage Storage) (obj *supervisor) {
+func New(monitor Monitor, storage Storage) (obj *supervisor) {
 
 	obj = new(supervisor)
 	obj.events = make(chanEvents)
 	obj.storage = storage
-	obj.isCancel = isCancelFunc
+	obj.monitor = monitor
 
 	goFunc := func(work func()) {
 		obj.wg.Add(1)
@@ -36,7 +41,7 @@ func New(isCancelFunc CancelFunc, storage Storage) (obj *supervisor) {
 	}
 
 	obj.worker = new(processor)
-	obj.worker.init(obj.isCancel, storage)
+	obj.worker.init(obj.monitor, storage)
 	goFunc(func() { obj.worker.start(obj.events) })
 
 	return obj

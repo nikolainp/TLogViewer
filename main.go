@@ -46,13 +46,17 @@ func main() {
 		walker := filewalker.New(monitor)
 
 		monitor.Start()
-		storage = getNewStorage(conf.DataPath)
-		observer := logobserver.New(isCancel, storage)
+
+		monitor.WriteEvent("Data catalog: %s\n", conf.DataPath)
+		monitor.WriteEvent("Storage: %s\n", conf.StoragePath)
+
+		storage = getNewStorage(conf.StoragePath)
+		observer := logobserver.New(monitor, storage)
 		walker.Walk(conf.DataPath, observer.ConsiderEvent)
 		observer.FlushAll()
 		monitor.Stop()
 	} else {
-		storage = getOldStorage(conf.DataPath)
+		storage = getOldStorage(conf.StoragePath)
 	}
 
 	reporter := webreporter.New(storage)
