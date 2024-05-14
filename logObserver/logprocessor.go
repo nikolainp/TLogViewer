@@ -51,6 +51,12 @@ func (obj *processor) start(events chanEvents) {
 	}
 }
 
+func (obj *processor) FlushAll() {
+
+	obj.clusterState.FlushAll()
+
+}
+
 func (obj *event) addProperties() error {
 	if len(obj.eventData) < 12 {
 		return fmt.Errorf("short event")

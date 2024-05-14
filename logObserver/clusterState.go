@@ -2,6 +2,7 @@ package logobserver
 
 import (
 	"path/filepath"
+	"time"
 )
 
 type clusterState struct {
@@ -21,16 +22,9 @@ func (obj *clusterState) addEvent(data event) {
 
 	if obj.curProcess != nil {
 		if obj.curProcess.name == data.catalog {
+			obj.curProcess.addEvent(data)
 			return
 		}
-
-		obj.storage.WriteProcess(
-			obj.curProcess.name,
-			obj.curProcess.catalog,
-			obj.curProcess.process,
-			0,
-			0,
-		)
 	}
 
 	if process, ok := obj.processes[data.catalog]; ok {
@@ -41,11 +35,28 @@ func (obj *clusterState) addEvent(data event) {
 	}
 }
 
+func (obj *clusterState) FlushAll() {
+	for _, process := range obj.processes {
+
+		obj.storage.WriteProcess(
+			process.name,
+			process.catalog,
+			process.process,
+			0,
+			0,
+			process.firstEventTime,
+			process.lastEventTime,
+		)
+	}
+}
+
 ///////////////////////////////////////////////////////////////////////////////
 
 type clusterProcess struct {
 	name, catalog, process string
 	//	pid, port              int
+	firstEventTime time.Time
+	lastEventTime  time.Time
 }
 
 func newClusterProcess(data event) *clusterProcess {
@@ -54,9 +65,17 @@ func newClusterProcess(data event) *clusterProcess {
 	obj.catalog = filepath.Dir(data.catalog)
 	obj.process = filepath.Base(data.catalog)
 
+	obj.firstEventTime = data.eventStopTime
+	obj.lastEventTime = data.eventStopTime
+
 	return obj
 }
 
 func (obj *clusterProcess) addEvent(data event) {
-
+	if obj.firstEventTime.After(data.eventStopTime) {
+		obj.firstEventTime = data.eventStopTime
+	}
+	if obj.lastEventTime.Before(data.eventStopTime) {
+		obj.lastEventTime = data.eventStopTime
+	}
 }

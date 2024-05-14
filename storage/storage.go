@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"fmt"
 	"os"
+	"time"
 
 	_ "github.com/mattn/go-sqlite3"
 )
@@ -45,21 +46,24 @@ func Open(stroragePath string) (*Storage, error) {
 }
 
 type Process struct {
-	Name    string
-	Catalog string
-	Process string
-	Pid     int
-	Port    int
+	Name           string
+	Catalog        string
+	Process        string
+	Pid            int
+	Port           int
+	FirstEventTime time.Time
+	LastEventTime  time.Time
 }
 
 func (obj *Storage) SelectAllProcesses() (data []Process, err error) {
-	query := "SELECT name, catalog, process, pid, port FROM processes"
+	query := "SELECT name, catalog, process, pid, port, firstEventTime, lastEventTime FROM processes"
 
 	var name string
 	var catalog string
 	var process string
 	var pid int
 	var port int
+	var firstEvent, lastEvent time.Time
 
 	data = make([]Process, 0)
 
@@ -69,17 +73,20 @@ func (obj *Storage) SelectAllProcesses() (data []Process, err error) {
 	}
 
 	for rows.Next() {
-		rows.Scan(&name, &catalog, &process, &pid, &port)
-		data = append(data, Process{name, catalog, process, pid, port})
+		rows.Scan(&name, &catalog, &process, &pid, &port, &firstEvent, &lastEvent)
+		data = append(data, Process{name, catalog, process, pid, port, firstEvent, lastEvent})
 	}
 
 	return
 }
 
-func (obj *Storage) WriteProcess(name, catalog, process string, pid, port int) error {
-	query := "INSERT INTO processes (name, catalog, process, pid, port) VALUES (?,?,?,?,?)"
+func (obj *Storage) WriteProcess(name, catalog, process string, pid, port int, firstEvent, lastEvent time.Time) error {
+	query := "INSERT INTO processes (name, catalog, process, pid, port, firstEventTime, lastEventTime) VALUES (?,?,?,?,?,?,?)"
 
-	if _, err := obj.db.Exec(query, name, catalog, process, pid, port); err != nil {
+	if _, err := obj.db.Exec(query,
+		name, catalog, process,
+		pid, port,
+		firstEvent, lastEvent); err != nil {
 		return fmt.Errorf("writeProcess: %w", err)
 	}
 
@@ -105,7 +112,10 @@ func (obj *Storage) create(stroragePath string) error {
 
 func (obj *Storage) init() error {
 	queries := []string{
-		"CREATE TABLE processes (name TEXT, catalog text, process TEXT, pid NUMBER, port NUMER)",
+		`CREATE TABLE processes (
+			name TEXT, catalog text, process TEXT, 
+			pid NUMBER, port NUMER, 
+			firstEventTime DATETIME, lastEventTime DATETIME)`,
 	}
 
 	for i := range queries {

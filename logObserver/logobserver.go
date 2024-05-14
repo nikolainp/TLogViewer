@@ -2,6 +2,7 @@ package logobserver
 
 import (
 	"sync"
+	"time"
 )
 
 type Monitor interface {
@@ -12,7 +13,7 @@ type Monitor interface {
 }
 
 type Storage interface {
-	WriteProcess(name, catalog, process string, pid, port int) error
+	WriteProcess(name, catalog, process string, pid, port int, firstEvent, lastEvent time.Time) error
 }
 
 type supervisor struct {
@@ -50,6 +51,8 @@ func New(monitor Monitor, storage Storage) (obj *supervisor) {
 func (obj *supervisor) FlushAll() {
 	close(obj.events)
 	obj.wg.Wait()
+
+	obj.worker.FlushAll()
 }
 
 func (obj *supervisor) ConsiderEvent(catalog string, fileName string, eventData string) {
