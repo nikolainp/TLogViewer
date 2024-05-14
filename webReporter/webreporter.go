@@ -101,16 +101,19 @@ var checkErr = func(err error) {
 const rootPageTemplate = `
 <html>
 <head>
-  <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
-  <script type="text/javascript">
-    google.charts.load('current', {'packages':['gantt']});
-    google.charts.setOnLoadCallback(drawChart);
+<script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
+<script type="text/javascript">
 
-    function daysToMilliseconds(days) {
-      return days * 24 * 60 * 60 * 1000;
-    }
+  // Load the Visualization API and the controls package.
+  google.charts.load('current', {'packages':['corechart', 'controls']});
 
-    function drawChart() {
+  // Set a callback to run when the Google Visualization API is loaded.
+  google.charts.setOnLoadCallback(drawDashboard);
+
+  // Callback that creates and populates a data table,
+  // instantiates a dashboard, a range slider and a pie chart,
+  // passes in the data and draws it.
+  function drawDashboard() {
 
       var data = new google.visualization.DataTable();
       data.addColumn('string', 'Task ID');
@@ -128,22 +131,41 @@ const rootPageTemplate = `
 	   	{{- end}}
 	  ]);
 
-	  var trackHeight = 60;
-      var options = {
-		height: data.getNumberOfRows() * trackHeight + trackHeight,
-		gantt: {
-			percentEnabled: false,
+	  var dashboard = new google.visualization.Dashboard(
+		document.getElementById('timeline_div'));
+
+
+	  var serverFilter = new google.visualization.ControlWrapper({
+		'controlType': 'CategoryFilter',
+		'containerId': 'serverfilter_div',
+		'options': {
+		  'filterColumnLabel': 'Resource',
+		  'ui': {label: 'Server', labelSeparator: ':'},
 		}
-      };
+	  });
 
-      var chart = new google.visualization.Gantt(document.getElementById('chart_div'));
+	  var trackHeight = 60;
+	  var ganttChart = new google.visualization.ChartWrapper({
+		'chartType': 'Gantt',
+		'containerId': 'gantt_div',
+		'dataTable': data,
+		'options': {
+			'height': data.getNumberOfRows() * trackHeight + trackHeight,
+			'percentEnabled': false,
+		}
+	  });
 
-      chart.draw(data, options);
+	  dashboard.bind(serverFilter, ganttChart);
+      //chart.draw(data, options);
+	  dashboard.draw(data);
     }
   </script>
 </head>
 <body>
-  <div id="chart_div"></div>
+	<div id="timeline_div">
+		<div id="serverfilter_div"></div>
+  		<div id="gantt_div"></div>
+	</div>
 </body>
 </html>
 `
