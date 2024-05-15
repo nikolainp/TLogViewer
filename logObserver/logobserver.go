@@ -13,6 +13,7 @@ type Monitor interface {
 }
 
 type Storage interface {
+	WriteDetails(title string) error
 	WriteProcess(name, catalog, process string, pid, port int, firstEvent, lastEvent time.Time) error
 }
 
@@ -26,7 +27,7 @@ type supervisor struct {
 	wg      sync.WaitGroup
 }
 
-func New(monitor Monitor, storage Storage) (obj *supervisor) {
+func New(monitor Monitor, storage Storage, title string) (obj *supervisor) {
 
 	obj = new(supervisor)
 	obj.events = make(chanEvents)
@@ -42,7 +43,7 @@ func New(monitor Monitor, storage Storage) (obj *supervisor) {
 	}
 
 	obj.worker = new(processor)
-	obj.worker.init(obj.monitor, storage)
+	obj.worker.init(obj.monitor, storage, title)
 	goFunc(func() { obj.worker.start(obj.events) })
 
 	return obj

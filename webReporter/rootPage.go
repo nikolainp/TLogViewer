@@ -16,7 +16,9 @@ func (obj *WebReporter) rootPage(w http.ResponseWriter, req *http.Request) {
 
 		for i := range data {
 			rows[i] = fmt.Sprintf("['%s', '%s', '%s', new Date(%s), new Date(%s), null, 100, null]",
-				data[i].Process, data[i].Process, data[i].Catalog,
+				data[i].Process,
+				template.JSEscapeString(data[i].Name),
+				data[i].Catalog,
 				data[i].FirstEventTime.Format("2006, 01, 02, 15, 04, 05"),
 				data[i].LastEventTime.Format("2006, 01, 02, 15, 04, 05"))
 		}
@@ -27,12 +29,17 @@ func (obj *WebReporter) rootPage(w http.ResponseWriter, req *http.Request) {
 	dataGraph, err := template.New("dataGraph").Parse(rootPageTemplate)
 	checkErr(err)
 
+	title, err := obj.storage.SelectDetails()
+	checkErr(err)
+
 	processes, err := obj.storage.SelectAllProcesses()
 	checkErr(err)
 
 	data := struct {
+		Title     string
 		Processes []string
 	}{
+		Title:     title,
 		Processes: toDataRows(processes),
 	}
 
@@ -45,16 +52,19 @@ func (obj *WebReporter) rootPage(w http.ResponseWriter, req *http.Request) {
 const rootPageTemplate = `
 <html>
 <head>
-<script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
-<script type="text/javascript">
 
-  // Load the Visualization API and the controls package.
-  google.charts.load('current', {'packages':['corechart', 'controls']});
+  <title>{{.Title}}</title>
 
-  // Set a callback to run when the Google Visualization API is loaded.
-  google.charts.setOnLoadCallback(drawDashboard);
+  <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
+  <script type="text/javascript">
 
-  function drawDashboard() {
+    // Load the Visualization API and the controls package.
+    google.charts.load('current', {'packages':['corechart', 'controls']});
+
+    // Set a callback to run when the Google Visualization API is loaded.
+    google.charts.setOnLoadCallback(drawDashboard);
+
+    function drawDashboard() {
 
       var data = new google.visualization.DataTable();
       data.addColumn('string', 'Task ID');

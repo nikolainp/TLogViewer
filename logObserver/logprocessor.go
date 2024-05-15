@@ -18,14 +18,15 @@ type processor struct {
 	clusterState clusterState
 
 	storage Storage
+	title   string
 
 	monitor Monitor
 }
 
-func (obj *processor) init(monitor Monitor, storage Storage) {
+func (obj *processor) init(monitor Monitor, storage Storage, title string) {
 	obj.monitor = monitor
-
 	obj.storage = storage
+	obj.title = title
 
 	obj.clusterState.init(obj.storage)
 }
@@ -52,6 +53,8 @@ func (obj *processor) start(events chanEvents) {
 }
 
 func (obj *processor) FlushAll() {
+
+	obj.storage.WriteDetails(obj.title)
 
 	obj.clusterState.FlushAll()
 

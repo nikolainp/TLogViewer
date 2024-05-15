@@ -55,6 +55,31 @@ type Process struct {
 	LastEventTime  time.Time
 }
 
+func (obj *Storage) SelectDetails() (title string, err error) {
+	query :=
+		`SELECT title FROM details LIMIT 1`
+
+	rows, err := obj.db.Query(query)
+	if err != nil {
+		return "", fmt.Errorf("SelectDetails: %w", err)
+	}
+
+	rows.Next()
+	rows.Scan(&title)
+
+	return
+}
+
+func (obj *Storage) WriteDetails(title string) error {
+	query := "INSERT INTO details (title) VALUES (?)"
+
+	if _, err := obj.db.Exec(query, title); err != nil {
+		return fmt.Errorf("writeProcess: %w", err)
+	}
+
+	return nil
+}
+
 func (obj *Storage) SelectAllProcesses() (data []Process, err error) {
 	query :=
 		`SELECT name, catalog, process, pid, port, firstEventTime, lastEventTime 
@@ -115,6 +140,10 @@ func (obj *Storage) create(stroragePath string) error {
 
 func (obj *Storage) init() error {
 	queries := []string{
+		`CREATE TABLE details (
+			title TEXT,
+			size NUMBER,
+			timeProcessing DATETIME)`,
 		`CREATE TABLE processes (
 			name TEXT, catalog text, process TEXT, 
 			pid NUMBER, port NUMER, 
@@ -122,8 +151,9 @@ func (obj *Storage) init() error {
 	}
 
 	for i := range queries {
-		_, err := obj.db.Exec(queries[i])
-		return err
+		if _, err := obj.db.Exec(queries[i]); err != nil {
+			return err
+		}
 	}
 
 	return nil

@@ -37,7 +37,6 @@ func (obj *clusterState) addEvent(data event) {
 
 func (obj *clusterState) FlushAll() {
 	for _, process := range obj.processes {
-
 		obj.storage.WriteProcess(
 			process.name,
 			process.catalog,
