@@ -17,6 +17,7 @@ func (obj *mockMonitor) IsCancel() bool                      { return false }
 func Test_processStream(t *testing.T) {
 	var obj lineChecker
 	obj.init(new(mockMonitor))
+	obj.prefixSecondLine = []byte("<line>")
 
 	tests := []struct {
 		name     string

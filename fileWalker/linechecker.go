@@ -26,6 +26,7 @@ type lineChecker struct {
 
 func (obj *lineChecker) init(monitor Monitor) {
 	obj.bufSize = 1024 * 1024 * 10
+	obj.prefixSecondLine = []byte("\n")
 
 	obj.monitor = monitor
 
@@ -54,7 +55,6 @@ func (obj *lineChecker) processStream(sName string, sIn io.Reader, fOut EventWal
 	}
 
 	obj.catalog, obj.fileName = splitPath(sName)
-	obj.prefixSecondLine = []byte("<line>")
 
 	obj.chBuf = make(chan streamBuffer, 1)
 

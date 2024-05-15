@@ -56,7 +56,10 @@ type Process struct {
 }
 
 func (obj *Storage) SelectAllProcesses() (data []Process, err error) {
-	query := "SELECT name, catalog, process, pid, port, firstEventTime, lastEventTime FROM processes"
+	query :=
+		`SELECT name, catalog, process, pid, port, firstEventTime, lastEventTime 
+		FROM processes
+		ORDER BY catalog, process`
 
 	var name string
 	var catalog string
