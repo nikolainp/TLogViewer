@@ -10,6 +10,7 @@ type Monitor interface {
 	NewData(size int64)
 	FinishedData(count, size int64)
 	IsCancel() bool
+	Cancel() chan bool
 }
 
 type Storage interface {

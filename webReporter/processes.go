@@ -26,7 +26,7 @@ func (obj *WebReporter) processes(w http.ResponseWriter, req *http.Request) {
 		return rows
 	}
 
-	dataGraph, err := template.New("dataGraph").Parse(rootPageTemplate)
+	dataGraph, err := template.New("processes").Parse(processesTemplate)
 	checkErr(err)
 
 	title, err := obj.storage.SelectDetails()
@@ -49,7 +49,7 @@ func (obj *WebReporter) processes(w http.ResponseWriter, req *http.Request) {
 
 }
 
-const rootPageTemplate = `
+const processesTemplate = `
 <html>
 <head>
 

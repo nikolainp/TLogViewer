@@ -20,18 +20,18 @@ type monitor struct {
 	ticker    *time.Ticker
 	done      chan bool
 
-	mu       sync.Mutex
-	wg       sync.WaitGroup
-	isCancel CancelFunc
+	mu         sync.Mutex
+	wg         sync.WaitGroup
+	cancelChan chan bool
 }
 
-func New(isCancelFunc CancelFunc) *monitor {
+func New(isCancelChan chan bool) *monitor {
 	obj := new(monitor)
 	obj.startTime = time.Now()
 	obj.ticker = time.NewTicker(500 * time.Millisecond)
 	obj.done = make(chan bool)
 
-	obj.isCancel = isCancelFunc
+	obj.cancelChan = isCancelChan
 
 	return obj
 	//return &monitor{startTime: time.Now()}
@@ -72,7 +72,16 @@ func (obj *monitor) Stop() {
 }
 
 func (obj *monitor) IsCancel() bool {
-	return obj.isCancel()
+	select {
+	case _, ok := <-obj.cancelChan:
+		return !ok
+	default:
+		return false
+	}
+}
+
+func (obj *monitor) Cancel() chan bool {
+	return obj.cancelChan
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -126,16 +135,19 @@ func (obj *monitor) print() {
 		defer obj.wg.Done()
 
 		for {
-			var done bool
+			var done, cancel bool
 
 			select {
 			case done = <-obj.done:
+
+			case _, ok := <-obj.cancelChan:
+				cancel = !ok
 
 			case <-obj.ticker.C:
 				doPrint()
 			}
 
-			if done || obj.isCancel() {
+			if done || cancel {
 				break
 			}
 		}

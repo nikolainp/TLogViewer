@@ -34,6 +34,10 @@ func (obj *processor) init(monitor Monitor, storage Storage, title string) {
 func (obj *processor) start(events chanEvents) {
 	for {
 		select {
+		case _, ok := <- obj.monitor.Cancel():
+			if !ok {
+				return
+			}
 		case data, ok := <-events:
 			if !ok {
 				return
@@ -44,10 +48,6 @@ func (obj *processor) start(events chanEvents) {
 				continue
 			}
 			obj.clusterState.addEvent(data)
-		}
-
-		if obj.monitor.IsCancel() {
-			return
 		}
 	}
 }

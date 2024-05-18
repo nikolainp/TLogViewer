@@ -42,7 +42,7 @@ func main() {
 	conf := getConfig(os.Args)
 
 	if !conf.ShowReportOnly {
-		monitor := monitor.New(isCancel)
+		monitor := monitor.New(cancelChan)
 		walker := filewalker.New(monitor)
 
 		monitor.Start()
@@ -87,15 +87,6 @@ func cancelAndExit() {
 	cancelChan <- true
 	close(cancelChan)
 	os.Exit(0)
-}
-
-func isCancel() bool {
-	select {
-	case _, ok := <-cancelChan:
-		return !ok
-	default:
-		return false
-	}
 }
 
 ///////////////////////////////////////////////////////////////////////////////
