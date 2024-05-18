@@ -38,8 +38,11 @@ func (obj *WebReporter) Start() {
 
 func (obj *WebReporter) getHandlers() *http.ServeMux {
 	sm := http.NewServeMux()
+	
 	sm.HandleFunc("/", obj.rootPage)
+	sm.HandleFunc("/processes", obj.processes)
 	sm.HandleFunc("/headers", obj.headers)
+
 	return sm
 }
 

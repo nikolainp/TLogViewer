@@ -54,9 +54,15 @@ func (obj *processor) start(events chanEvents) {
 
 func (obj *processor) FlushAll() {
 
-	obj.storage.WriteDetails(obj.title)
+	if err := obj.storage.WriteDetails(obj.title); err != nil {
+		obj.monitor.WriteEvent("error: %w\n", err)
+		return
+	}
 
-	obj.clusterState.FlushAll()
+	if err := obj.clusterState.FlushAll(); err != nil {
+		obj.monitor.WriteEvent("error: %w\n", err)
+		return
+	}
 
 }
 

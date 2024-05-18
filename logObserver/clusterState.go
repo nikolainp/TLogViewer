@@ -35,9 +35,9 @@ func (obj *clusterState) addEvent(data event) {
 	}
 }
 
-func (obj *clusterState) FlushAll() {
+func (obj *clusterState) FlushAll() error {
 	for _, process := range obj.processes {
-		obj.storage.WriteProcess(
+		if err := obj.storage.WriteProcess(
 			process.name,
 			process.catalog,
 			process.process,
@@ -45,8 +45,12 @@ func (obj *clusterState) FlushAll() {
 			0,
 			process.firstEventTime,
 			process.lastEventTime,
-		)
+		); err != nil {
+			return err
+		}
 	}
+
+	return nil
 }
 
 ///////////////////////////////////////////////////////////////////////////////
