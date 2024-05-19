@@ -55,13 +55,16 @@ type Process struct {
 	LastEventTime  time.Time
 }
 
-func (obj *Storage) SelectDetails() (title string, err error) {
+func (obj *Storage) SelectTitle() (title string, err error) {
 	query :=
-		`SELECT title FROM details LIMIT 1`
+		`SELECT title
+		FROM details 
+		LIMIT 1`
 
 	rows, err := obj.db.Query(query)
 	if err != nil {
-		return "", fmt.Errorf("SelectDetails: %w", err)
+		err = fmt.Errorf("SelectDetails: %w", err)
+		return
 	}
 
 	rows.Next()
@@ -70,10 +73,33 @@ func (obj *Storage) SelectDetails() (title string, err error) {
 	return
 }
 
-func (obj *Storage) WriteDetails(title string) error {
-	query := "INSERT INTO details (title) VALUES (?)"
+func (obj *Storage) SelectDetails() (title, version string, processingSize, processingSpeed int64, processingTime, firstEventTime, lastEventTime time.Time, err error) {
+	query :=
+		`SELECT title, version, processingSize, processingSpeed, processingTime, firstEventTime, lastEventTime
+		FROM details 
+		LIMIT 1`
 
-	if _, err := obj.db.Exec(query, title); err != nil {
+	rows, err := obj.db.Query(query)
+	if err != nil {
+		err = fmt.Errorf("SelectDetails: %w", err)
+		return
+	}
+
+	rows.Next()
+	rows.Scan(&title, &version, &processingSize, &processingSpeed, &processingTime, &firstEventTime, &lastEventTime)
+
+	return
+}
+
+func (obj *Storage) WriteDetails(title, version string, processingSize, processingSpeed int64, processingTime, firstEventTime, lastEventTime time.Time) error {
+	query := `INSERT INTO details 
+		(title, version, processingSize, processingSpeed, processingTime, firstEventTime, lastEventTime) 
+	VALUES (?, ?, ?, ?, ?, ?, ?)`
+
+	if _, err := obj.db.Exec(query,
+		title, version,
+		processingSize, processingSpeed,
+		processingTime, firstEventTime, lastEventTime); err != nil {
 		return fmt.Errorf("writeProcess: %w", err)
 	}
 
@@ -141,9 +167,9 @@ func (obj *Storage) create(stroragePath string) error {
 func (obj *Storage) init() error {
 	queries := []string{
 		`CREATE TABLE details (
-			title TEXT,
-			size NUMBER,
-			timeProcessing DATETIME)`,
+			title TEXT, version TEXT,
+			processingSize NUMBER, processingSpeed NUMBER, processingTime DATETIME,
+			firstEventTime DATETIME, lastEventTime DATETIME)`,
 		`CREATE TABLE processes (
 			name TEXT, catalog text, process TEXT, 
 			pid NUMBER, port NUMER, 

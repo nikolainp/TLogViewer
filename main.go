@@ -51,7 +51,7 @@ func main() {
 		monitor.WriteEvent("Storage: %s\n", conf.StoragePath)
 
 		storage = getNewStorage(conf.StoragePath)
-		observer := logobserver.New(monitor, storage, conf.DataPath)
+		observer := logobserver.New(monitor, storage, conf.DataPath, version)
 		walker.Walk(conf.DataPath, observer.ConsiderEvent)
 		observer.FlushAll()
 		monitor.Stop()

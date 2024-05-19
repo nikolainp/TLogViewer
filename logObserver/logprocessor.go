@@ -19,14 +19,23 @@ type processor struct {
 
 	storage Storage
 	title   string
+	version string
+
+	startProcessingTime time.Time
+	eventDataSize       int64
+	firstEventTime      time.Time
+	lastEventTime       time.Time
 
 	monitor Monitor
 }
 
-func (obj *processor) init(monitor Monitor, storage Storage, title string) {
+func (obj *processor) init(monitor Monitor, storage Storage, title, version string) {
 	obj.monitor = monitor
 	obj.storage = storage
 	obj.title = title
+	obj.version = version
+
+	obj.startProcessingTime = time.Now()
 
 	obj.clusterState.init(obj.storage)
 }
@@ -34,7 +43,7 @@ func (obj *processor) init(monitor Monitor, storage Storage, title string) {
 func (obj *processor) start(events chanEvents) {
 	for {
 		select {
-		case _, ok := <- obj.monitor.Cancel():
+		case _, ok := <-obj.monitor.Cancel():
 			if !ok {
 				return
 			}
@@ -47,6 +56,15 @@ func (obj *processor) start(events chanEvents) {
 				obj.monitor.WriteEvent("error event: %s: %s:\n%s\n%w\n", data.catalog, data.fileName, data.eventData, err)
 				continue
 			}
+
+			obj.eventDataSize += int64(len(data.eventData))
+			if obj.firstEventTime.After(data.eventStopTime) || obj.firstEventTime.IsZero() {
+				obj.firstEventTime = data.eventStopTime
+			}
+			if obj.lastEventTime.Before(data.eventStopTime) || obj.lastEventTime.IsZero() {
+				obj.lastEventTime = data.eventStopTime
+			}
+
 			obj.clusterState.addEvent(data)
 		}
 	}
@@ -54,7 +72,9 @@ func (obj *processor) start(events chanEvents) {
 
 func (obj *processor) FlushAll() {
 
-	if err := obj.storage.WriteDetails(obj.title); err != nil {
+	if err := obj.storage.WriteDetails(obj.title, obj.version,
+		obj.eventDataSize, 1000 * obj.eventDataSize/time.Since(obj.startProcessingTime).Milliseconds(),
+		time.Now(), obj.firstEventTime, obj.lastEventTime); err != nil {
 		obj.monitor.WriteEvent("error: %w\n", err)
 		return
 	}

@@ -29,7 +29,7 @@ func (obj *WebReporter) processes(w http.ResponseWriter, req *http.Request) {
 	dataGraph, err := template.New("processes").Parse(processesTemplate)
 	checkErr(err)
 
-	title, err := obj.storage.SelectDetails()
+	title, err := obj.storage.SelectTitle()
 	checkErr(err)
 
 	processes, err := obj.storage.SelectAllProcesses()
@@ -59,7 +59,7 @@ const processesTemplate = `
   <script type="text/javascript">
 
     // Load the Visualization API and the controls package.
-    google.charts.load('current', {'packages':['corechart', 'controls']});
+    google.charts.load('current', {'packages':['corechart', 'controls'], 'language': 'ru'});
 
     // Set a callback to run when the Google Visualization API is loaded.
     google.charts.setOnLoadCallback(drawDashboard);
@@ -101,6 +101,7 @@ const processesTemplate = `
 		'containerId': 'gantt_div',
 		'dataTable': data,
 		'options': {
+			'title': 'Время жизни процессов',
 			'height': data.getNumberOfRows() * trackHeight + trackHeight,
 			'percentEnabled': false,
 		}
