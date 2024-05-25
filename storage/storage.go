@@ -147,12 +147,24 @@ func (obj *Storage) WriteProcess(name, catalog, process string, pid, port int, f
 	return nil
 }
 
+func (obj *Storage) WriteProcessPerfomance(processID int, eventTime time.Time, counter string, value float64) error {
+	query := "INSERT INTO processesPerfomance (processID, eventTime, counterName, counterValue) VALUES (?,?,?,?)"
+
+	if _, err := obj.db.Exec(query,
+		processID, eventTime, counter, value); err != nil {
+		return fmt.Errorf("WriteProcessPerfomance: %w", err)
+	}
+
+	return nil
+}
+
 ///////////////////////////////////////////////////////////////////////////////
 
 func (obj *Storage) create(stroragePath string) error {
 	var err error
 
-	obj.db, err = sql.Open("sqlite3", stroragePath)
+	//obj.db, err = sql.Open("sqlite3", stroragePath+"?mode=memory&cache=private&nolock=1&psow=1")
+	obj.db, err = sql.Open("sqlite3", ":memory:?mode=memory&cache=private&nolock=1&psow=1")
 	if err != nil {
 		return fmt.Errorf("open storage: %v", err)
 	}
@@ -166,6 +178,7 @@ func (obj *Storage) create(stroragePath string) error {
 
 func (obj *Storage) init() error {
 	queries := []string{
+		`PRAGMA main.journal_mode = MEMORY`,
 		`CREATE TABLE details (
 			title TEXT, version TEXT,
 			processingSize NUMBER, processingSpeed NUMBER, processingTime DATETIME,
@@ -173,7 +186,12 @@ func (obj *Storage) init() error {
 		`CREATE TABLE processes (
 			name TEXT, catalog text, process TEXT, 
 			pid NUMBER, port NUMER, 
-			firstEventTime DATETIME, lastEventTime DATETIME)`,
+			firstEventTime DATETIME, lastEventTime DATETIME,
+			processID NUMBER, server TEXT)`,
+		`CREATE TABLE processesPerfomance (
+			processID NUMBER,
+			eventTime DATATIME,
+			counterName TEXT, counterValue NUMBER)`,
 	}
 
 	for i := range queries {

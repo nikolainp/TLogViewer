@@ -2,6 +2,7 @@ package logobserver
 
 import (
 	"fmt"
+	"strings"
 	"time"
 )
 
@@ -10,7 +11,10 @@ type event struct {
 	fileName  string
 	eventData string
 
-	eventStopTime time.Time
+	startTime         time.Time
+	stopTime          time.Time
+	duration          time.Duration
+	eventType         string
 }
 type chanEvents chan event
 
@@ -58,11 +62,11 @@ func (obj *processor) start(events chanEvents) {
 			}
 
 			obj.eventDataSize += int64(len(data.eventData))
-			if obj.firstEventTime.After(data.eventStopTime) || obj.firstEventTime.IsZero() {
-				obj.firstEventTime = data.eventStopTime
+			if obj.firstEventTime.After(data.stopTime) || obj.firstEventTime.IsZero() {
+				obj.firstEventTime = data.stopTime
 			}
-			if obj.lastEventTime.Before(data.eventStopTime) || obj.lastEventTime.IsZero() {
-				obj.lastEventTime = data.eventStopTime
+			if obj.lastEventTime.Before(data.stopTime) || obj.lastEventTime.IsZero() {
+				obj.lastEventTime = data.stopTime
 			}
 
 			obj.clusterState.addEvent(data)
@@ -73,31 +77,50 @@ func (obj *processor) start(events chanEvents) {
 func (obj *processor) FlushAll() {
 
 	if err := obj.storage.WriteDetails(obj.title, obj.version,
-		obj.eventDataSize, 1000 * obj.eventDataSize/time.Since(obj.startProcessingTime).Milliseconds(),
+		obj.eventDataSize, 1000*obj.eventDataSize/time.Since(obj.startProcessingTime).Milliseconds(),
 		time.Now(), obj.firstEventTime, obj.lastEventTime); err != nil {
 		obj.monitor.WriteEvent("error: %w\n", err)
 		return
 	}
 
-	if err := obj.clusterState.FlushAll(); err != nil {
+	if err := obj.clusterState.flushAll(); err != nil {
 		obj.monitor.WriteEvent("error: %w\n", err)
 		return
 	}
 
 }
 
-func (obj *event) addProperties() error {
+func (obj *event) addProperties() (err error) {
 	if len(obj.eventData) < 12 {
 		return fmt.Errorf("short event")
 	}
 	strLineTime := obj.fileName + ":" + obj.eventData[:12]
 
-	stopTime, err := time.ParseInLocation("06010215.log:04:05", string(strLineTime), time.Local)
+	obj.stopTime, err = time.ParseInLocation("06010215.log:04:05", string(strLineTime), time.Local)
 	if err != nil {
 		return err
 	}
 
-	obj.eventStopTime = stopTime
+	commaPosition := strings.Index(obj.eventData[13:], ",")
+	if commaPosition == -1 {
+		return fmt.Errorf("error format event: " + obj.eventData)
+	}
+	obj.duration, err = time.ParseDuration(obj.eventData[13:13+commaPosition] + "us")
+	if err != nil {
+		return err
+	}
+
+	obj.startTime = obj.stopTime.Add(-1 * obj.duration)
+
+	dataStartPosition := 13 + commaPosition + 1
+	commaPosition = strings.Index(obj.eventData[dataStartPosition:], ",")
+	if commaPosition == -1 {
+		return fmt.Errorf("error format event: " + obj.eventData)
+	}
+	obj.eventType = obj.eventData[dataStartPosition : dataStartPosition+commaPosition]
+
+	dataStartPosition = dataStartPosition + commaPosition + 1
+	obj.eventData = obj.eventData[dataStartPosition:]
 
 	return nil
 }
