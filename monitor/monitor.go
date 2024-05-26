@@ -101,7 +101,7 @@ func (obj *monitor) print() {
 		totalSpeed = 1000 * obj.sizeFinished / totalDuration.Milliseconds()
 
 		deltaDuration := totalDuration - prevDuration
-		if deltaDuration.Seconds() > 0 {
+		if deltaDuration.Milliseconds() > 0 {
 			speed = 1000 * (obj.sizeFinished - prevFinishedSize) / deltaDuration.Milliseconds()
 			if deltaDuration.Seconds() < 1 {
 				speed = 1000 * speed / deltaDuration.Milliseconds()

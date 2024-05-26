@@ -16,7 +16,7 @@ func TestNew(t *testing.T) {
 		}
 		defer os.Remove(file.Name())
 
-		_, err = New(file.Name())
+		_, err = Open(file.Name())
 		if err != nil {
 			t.Errorf("New() error = %v", err)
 			return

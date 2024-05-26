@@ -10,39 +10,58 @@ import (
 )
 
 type Storage struct {
+	metadata metaData
+
 	db *sql.DB
 }
 
 // Конструктор Storage
-func New(stroragePath string) (*Storage, error) {
+func CreateCache() (*Storage, error) {
 
-	if err := os.Remove(stroragePath); err != nil && !os.IsNotExist(err) {
-		return nil, fmt.Errorf("clear storage: %v", err)
-	}
+	var err error
 
-	db := new(Storage)
-	if err := db.create(stroragePath); err != nil {
-		return nil, err
-	}
-	if err := db.init(); err != nil {
+	obj := newStorage()
+	if obj.db, err = openDB(""); err != nil {
 		return nil, err
 	}
 
-	return db, nil
+	obj.metadata.initDB(obj.db, true)
+
+	return obj, nil
 }
 
-func Open(stroragePath string) (*Storage, error) {
+func Open(stroragePath string) (obj *Storage, err error) {
 
 	if _, err := os.Stat(stroragePath); err != nil {
 		return nil, fmt.Errorf("open storage: %v", err)
 	}
 
-	db := new(Storage)
-	if err := db.create(stroragePath); err != nil {
+	obj = newStorage()
+	if obj.db, err = openDB(stroragePath); err != nil {
 		return nil, err
 	}
 
-	return db, nil
+
+	return obj, nil
+}
+
+func (obj *Storage) FlushAll(stroragePath string) error {
+
+	if err := os.Remove(stroragePath); err != nil && !os.IsNotExist(err) {
+		return fmt.Errorf("clear storage: %v", err)
+	}
+
+	db, err := openDB(stroragePath); 
+	if err != nil {
+		return err
+	}
+	obj.metadata.initDB(db, false)
+	db.Close()
+
+	obj.metadata.saveAll(obj.db, stroragePath)
+
+	return nil
+
 }
 
 type Process struct {
@@ -100,6 +119,9 @@ func (obj *Storage) WriteDetails(title, version string, processingSize, processi
 		title, version,
 		processingSize, processingSpeed,
 		processingTime, firstEventTime, lastEventTime); err != nil {
+
+		panic(fmt.Errorf("\nquery: %s\nerror: %w", query, err))
+
 		return fmt.Errorf("writeProcess: %w", err)
 	}
 
@@ -160,45 +182,39 @@ func (obj *Storage) WriteProcessPerfomance(processID int, eventTime time.Time, c
 
 ///////////////////////////////////////////////////////////////////////////////
 
-func (obj *Storage) create(stroragePath string) error {
+func  openDB(stroragePath string) (*sql.DB, error) {
+	var dataSource string
 	var err error
 
-	//obj.db, err = sql.Open("sqlite3", stroragePath+"?mode=memory&cache=private&nolock=1&psow=1")
-	obj.db, err = sql.Open("sqlite3", ":memory:?mode=memory&cache=private&nolock=1&psow=1")
-	if err != nil {
-		return fmt.Errorf("open storage: %v", err)
+	if stroragePath == "" {
+		dataSource = ":memory:?mode=memory&cache=private&nolock=1&psow=1"
+	} else {
+		dataSource = "file:"+stroragePath+"?cache=private&nolock=1&psow=1"
 	}
-	err = obj.db.Ping()
+	db, err := sql.Open("sqlite3", dataSource)
 	if err != nil {
-		return fmt.Errorf("ping storage: %v", err)
+		return nil, fmt.Errorf("open storage: %v", err)
+	}
+	if err = db.Ping(); err != nil {
+		return nil, fmt.Errorf("ping storage: %v", err)
 	}
 
-	return nil
-}
-
-func (obj *Storage) init() error {
 	queries := []string{
 		`PRAGMA main.journal_mode = MEMORY`,
-		`CREATE TABLE details (
-			title TEXT, version TEXT,
-			processingSize NUMBER, processingSpeed NUMBER, processingTime DATETIME,
-			firstEventTime DATETIME, lastEventTime DATETIME)`,
-		`CREATE TABLE processes (
-			name TEXT, catalog text, process TEXT, 
-			pid NUMBER, port NUMER, 
-			firstEventTime DATETIME, lastEventTime DATETIME,
-			processID NUMBER, server TEXT)`,
-		`CREATE TABLE processesPerfomance (
-			processID NUMBER,
-			eventTime DATATIME,
-			counterName TEXT, counterValue NUMBER)`,
 	}
-
 	for i := range queries {
-		if _, err := obj.db.Exec(queries[i]); err != nil {
-			return err
+		if _, err := db.Exec(queries[i]); err != nil {
+			panic(err)
 		}
 	}
 
-	return nil
+
+	return db, nil
+}
+
+func newStorage() *Storage {
+	obj := new(Storage)
+	obj.metadata.init()
+
+	return obj
 }

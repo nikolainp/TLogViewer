@@ -50,10 +50,12 @@ func main() {
 		monitor.WriteEvent("Data catalog: %s\n", conf.DataPath)
 		monitor.WriteEvent("Storage: %s\n", conf.StoragePath)
 
-		storage = getNewStorage(conf.StoragePath)
+		storage = getNewStorage()
 		observer := logobserver.New(monitor, storage, conf.DataPath, version)
 		walker.Walk(conf.DataPath, observer.ConsiderEvent)
 		observer.FlushAll()
+
+		storage.FlushAll(conf.StoragePath)
 		monitor.Stop()
 	} else {
 		storage = getOldStorage(conf.StoragePath)
@@ -91,9 +93,9 @@ func cancelAndExit() {
 
 ///////////////////////////////////////////////////////////////////////////////
 
-func getNewStorage(path string) *storage.Storage {
+func getNewStorage() *storage.Storage {
 
-	db, err := storage.New(path)
+	db, err := storage.CreateCache()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Storage error: %v\n", err)
 		cancelAndExit()
