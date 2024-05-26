@@ -12,6 +12,8 @@ import (
 type Storage struct {
 	metadata metaData
 
+	cacheInsertValueSQL map[string]string
+
 	db *sql.DB
 }
 
@@ -41,7 +43,6 @@ func Open(stroragePath string) (obj *Storage, err error) {
 		return nil, err
 	}
 
-
 	return obj, nil
 }
 
@@ -51,7 +52,7 @@ func (obj *Storage) FlushAll(stroragePath string) error {
 		return fmt.Errorf("clear storage: %v", err)
 	}
 
-	db, err := openDB(stroragePath); 
+	db, err := openDB(stroragePath)
 	if err != nil {
 		return err
 	}
@@ -110,24 +111,6 @@ func (obj *Storage) SelectDetails() (title, version string, processingSize, proc
 	return
 }
 
-func (obj *Storage) WriteDetails(title, version string, processingSize, processingSpeed int64, processingTime, firstEventTime, lastEventTime time.Time) error {
-	query := `INSERT INTO details 
-		(title, version, processingSize, processingSpeed, processingTime, firstEventTime, lastEventTime) 
-	VALUES (?, ?, ?, ?, ?, ?, ?)`
-
-	if _, err := obj.db.Exec(query,
-		title, version,
-		processingSize, processingSpeed,
-		processingTime, firstEventTime, lastEventTime); err != nil {
-
-		panic(fmt.Errorf("\nquery: %s\nerror: %w", query, err))
-
-		return fmt.Errorf("writeProcess: %w", err)
-	}
-
-	return nil
-}
-
 func (obj *Storage) SelectAllProcesses() (data []Process, err error) {
 	query :=
 		`SELECT name, catalog, process, pid, port, firstEventTime, lastEventTime 
@@ -156,40 +139,28 @@ func (obj *Storage) SelectAllProcesses() (data []Process, err error) {
 	return
 }
 
-func (obj *Storage) WriteProcess(name, catalog, process string, pid, port int, firstEvent, lastEvent time.Time) error {
-	query := "INSERT INTO processes (name, catalog, process, pid, port, firstEventTime, lastEventTime) VALUES (?,?,?,?,?,?,?)"
-
-	if _, err := obj.db.Exec(query,
-		name, catalog, process,
-		pid, port,
-		firstEvent, lastEvent); err != nil {
-		return fmt.Errorf("writeProcess: %w", err)
+func (obj *Storage) WriteRow(table string, args ...any) {
+	query, ok := obj.cacheInsertValueSQL[table]
+	if !ok {
+		query = obj.metadata.getInsertValueSQL(table)
+		obj.cacheInsertValueSQL[table] = query
 	}
 
-	return nil
-}
-
-func (obj *Storage) WriteProcessPerfomance(processID int, eventTime time.Time, counter string, value float64) error {
-	query := "INSERT INTO processesPerfomance (processID, eventTime, counterName, counterValue) VALUES (?,?,?,?)"
-
-	if _, err := obj.db.Exec(query,
-		processID, eventTime, counter, value); err != nil {
-		return fmt.Errorf("WriteProcessPerfomance: %w", err)
+	if _, err := obj.db.Exec(query, args...); err != nil {
+		panic(fmt.Errorf("\nquery: %s\nerror: %w", query, err))
 	}
-
-	return nil
 }
 
 ///////////////////////////////////////////////////////////////////////////////
 
-func  openDB(stroragePath string) (*sql.DB, error) {
+func openDB(stroragePath string) (*sql.DB, error) {
 	var dataSource string
 	var err error
 
 	if stroragePath == "" {
 		dataSource = ":memory:?mode=memory&cache=private&nolock=1&psow=1"
 	} else {
-		dataSource = "file:"+stroragePath+"?cache=private&nolock=1&psow=1"
+		dataSource = "file:" + stroragePath + "?cache=private&nolock=1&psow=1"
 	}
 	db, err := sql.Open("sqlite3", dataSource)
 	if err != nil {
@@ -208,13 +179,13 @@ func  openDB(stroragePath string) (*sql.DB, error) {
 		}
 	}
 
-
 	return db, nil
 }
 
 func newStorage() *Storage {
 	obj := new(Storage)
 	obj.metadata.init()
+	obj.cacheInsertValueSQL = make(map[string]string)
 
 	return obj
 }

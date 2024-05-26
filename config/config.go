@@ -49,7 +49,7 @@ func New(args []string) (obj Config, err error) {
 	}
 
 	obj.DataPath = filepath.Clean(fs.Arg(0))
-	obj.StoragePath = obj.DataPath + ".report.sqlite"
+	obj.StoragePath = obj.DataPath + "Report.sqlite"
 
 	return
 }

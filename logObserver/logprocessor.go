@@ -75,19 +75,14 @@ func (obj *processor) start(events chanEvents) {
 }
 
 func (obj *processor) FlushAll() {
-
-	if err := obj.storage.WriteDetails(obj.title, obj.version,
+	obj.storage.WriteRow("details", obj.title, obj.version,
 		obj.eventDataSize, 1000*obj.eventDataSize/time.Since(obj.startProcessingTime).Milliseconds(),
-		time.Now(), obj.firstEventTime, obj.lastEventTime); err != nil {
-		obj.monitor.WriteEvent("error: %w\n", err)
-		return
-	}
+		time.Now(), obj.firstEventTime, obj.lastEventTime)
 
 	if err := obj.clusterState.flushAll(); err != nil {
 		obj.monitor.WriteEvent("error: %w\n", err)
 		return
 	}
-
 }
 
 func (obj *event) addProperties() (err error) {

@@ -7,7 +7,7 @@ import (
 )
 
 type metaData struct {
-	tables []metaTable
+	tables map[string]metaTable
 }
 
 type metaTable struct {
@@ -27,8 +27,8 @@ type metaColumn struct {
 ///////////////////////////////////////////////////////////////////////////////
 
 func (obj *metaData) init() {
-	obj.tables = []metaTable{
-		{name: "details",
+	obj.tables = map[string]metaTable{
+		"details": {name: "details",
 			columns: []metaColumn{
 				{name: "title", datatype: "TEXT"}, {name: "version", datatype: "TEXT"},
 				{name: "processingSize", datatype: "NUMBER"},
@@ -36,7 +36,7 @@ func (obj *metaData) init() {
 				{name: "firstEventTime", datatype: "DATETIME"}, {name: "lastEventTime", datatype: "DATETIME"},
 			},
 		},
-		{name: "processes",
+		"processes": {name: "processes",
 			columns: []metaColumn{
 				{name: "name", datatype: "TEXT"}, {name: "catalog", datatype: "TEXT"}, {name: "process", datatype: "TEXT"},
 				{name: "pid", datatype: "NUMBER"}, {name: "port", datatype: "NUMBER"},
@@ -44,7 +44,7 @@ func (obj *metaData) init() {
 				{name: "processID", datatype: "NUMBER"}, {name: "server", datatype: "TEXT"},
 			},
 		},
-		{name: "processesPerfomance",
+		"processesPerfomance": {name: "processesPerfomance",
 			columns: []metaColumn{
 				{name: "processID", datatype: "NUMBER", isService: true}, {name: "eventTime", datatype: "DATATIME"},
 				{name: "process", datatype: "TEXT", isCache: true}, {name: "pid", datatype: "TEXT", isCache: true},
@@ -58,16 +58,15 @@ func (obj *metaData) init() {
 			},
 		},
 	}
-
 }
 
 func (obj *metaData) initDB(db *sql.DB, isCache bool) {
 
-	for i := range obj.tables {
-		if obj.tables[i].isCache && !isCache {
+	for _, table := range obj.tables {
+		if table.isCache && !isCache {
 			continue
 		}
-		if _, err := db.Exec(obj.tables[i].getCreateSQL(true)); err != nil {
+		if _, err := db.Exec(table.getCreateSQL(isCache)); err != nil {
 			panic(err)
 		}
 	}
@@ -79,11 +78,11 @@ func (obj *metaData) saveAll(db *sql.DB, dbPath string) {
 		panic(err)
 	}
 
-	for i := range obj.tables {
-		if obj.tables[i].isCache {
+	for _, table := range obj.tables {
+		if table.isCache {
 			continue
 		}
-		query := obj.tables[i].getInsertSelectSQL()
+		query := table.getInsertSelectSQL()
 		if _, err := db.Exec(query); err != nil {
 			panic(fmt.Errorf("query: %s\nerror: %w", query, err))
 		}
@@ -96,7 +95,7 @@ func (obj *metaData) saveAll(db *sql.DB, dbPath string) {
 
 		rows, err := db.Query(query)
 		if err != nil {
-			err = fmt.Errorf("SelectDetails: %w", err)
+			err = fmt.Errorf("selectDetails: %w", err)
 			return
 		}
 
@@ -111,22 +110,26 @@ func (obj *metaData) saveAll(db *sql.DB, dbPath string) {
 	}
 }
 
+func (obj *metaData) getInsertValueSQL(table string) string {
+	return obj.tables[table].getInsertValueSQL()
+}
+
 ///////////////////////////////////////////////////////////////////////////////
 
 func (obj *metaTable) getCreateSQL(isCache bool) string {
 
-	queryColumns := make([]string, len(obj.columns))
+	queryColumns := make([]string, 0, len(obj.columns))
 	for i := range obj.columns {
 		if obj.columns[i].isCache && !isCache {
 			continue
 		}
-		queryColumns[i] = fmt.Sprintf("%s %s", obj.columns[i].name, obj.columns[i].datatype)
+		queryColumns = append(queryColumns, fmt.Sprintf("%s %s", obj.columns[i].name, obj.columns[i].datatype))
 	}
 
 	return fmt.Sprintf("CREATE TABLE %s (%s)", obj.name, strings.Join(queryColumns, ","))
 }
 
-func (obj *metaTable) getInsertValueSQL() string {
+func (obj metaTable) getInsertValueSQL() string {
 	queryColumns := make([]string, 0, len(obj.columns))
 	queryValues := make([]string, 0, len(obj.columns))
 

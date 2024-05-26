@@ -43,19 +43,16 @@ func (obj *clusterState) addEvent(data event) {
 
 func (obj *clusterState) flushAll() error {
 	for _, process := range obj.processes {
-		if err := obj.storage.WriteProcess(
+		obj.storage.WriteRow("processes",
 			process.name,
 			process.catalog,
 			process.process,
 			0,
 			0,
-			process.firstEventTime,
-			process.lastEventTime,
-		); err != nil {
-			return err
-		}
+			process.firstEventTime, process.lastEventTime,
+			0, "",
+		)
 	}
-
 	return nil
 }
 
@@ -64,28 +61,23 @@ func (obj *clusterState) flushAll() error {
 func (obj *clusterState) agentStandardCall(data event) {
 
 	var process, pid string
+	var cpu, queue_length, queue_lengthByCpu int
+	var memory_performance, disk_performance int
+	var response_time int
+	var average_response_time float64
 
 	isTrueEvent := func(data event) bool {
 		return data.eventType == "CLSTR" &&
 			strings.Contains(data.eventData, ",process=rmngr,") &&
 			strings.Contains(data.eventData, ",Event=Performance update,")
 	}
-	saveCounters := func(processID int, eventTime time.Time, dataFields []string) error {
-		for _, field := range dataFields {
-			subFields := strings.Split(field, "=")
-			if subFields[0] == "process" || subFields[0] == "pid" {
-				continue
-			}
-
-			if value, err := strconv.ParseFloat(subFields[1], 32); err != nil {
-				err = obj.storage.WriteProcessPerfomance(processID, eventTime, subFields[0], value)
-				if err != nil {
-					return err
-				}
-			}
-
-		}
-		return nil
+	parseInt := func(data string) int {
+		val, _ := strconv.Atoi(data)
+		return val
+	}
+	parseFloat := func(data string) float64 {
+		val, _ := strconv.ParseFloat(data, 32)
+		return val
 	}
 
 	if !isTrueEvent(data) {
@@ -107,17 +99,33 @@ func (obj *clusterState) agentStandardCall(data event) {
 		if subFields[0] == "pid" {
 			pid = subFields[1]
 		}
-
+		if subFields[0] == "cpu" {
+			cpu = parseInt(subFields[1])
+		}
+		if subFields[0] == "queue_length" {
+			queue_length = parseInt(subFields[1])
+		}
+		if subFields[0] == "queue_length/cpu_num" {
+			queue_lengthByCpu = parseInt(subFields[1])
+		}
+		if subFields[0] == "memory_performance" {
+			memory_performance = parseInt(subFields[1])
+		}
+		if subFields[0] == "disk_performance" {
+			disk_performance = parseInt(subFields[1])
+		}
+		if subFields[0] == "response_time" {
+			response_time = parseInt(subFields[1])
+		}
+		if subFields[0] == "average_response_time" {
+			average_response_time = parseFloat(subFields[1])
+		}
 	}
 
-	processName := process + "\n" + pid
-	if processID, ok := obj.processID[processName]; ok {
-		saveCounters(processID, data.stopTime, dataFields)
-	} else {
-		processID = len(obj.processID) + 1
-		obj.processID[processName] = processID
-		saveCounters(processID, data.stopTime, dataFields)
-	}
+	obj.storage.WriteRow("processesPerfomance", data.stopTime,
+		process, pid, cpu, queue_length, queue_lengthByCpu,
+		memory_performance, disk_performance,
+		response_time, average_response_time)
 }
 
 ///////////////////////////////////////////////////////////////////////////////

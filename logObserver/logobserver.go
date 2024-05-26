@@ -2,7 +2,6 @@ package logobserver
 
 import (
 	"sync"
-	"time"
 )
 
 type Monitor interface {
@@ -14,9 +13,7 @@ type Monitor interface {
 }
 
 type Storage interface {
-	WriteDetails(title, version string, processingSize, processingSpeed int64, processingTime, firstEventTime, lastEventTime time.Time) error
-	WriteProcess(name, catalog, process string, pid, port int, firstEvent, lastEvent time.Time) error
-	WriteProcessPerfomance(processID int, eventTime time.Time, counter string, value float64) error
+	WriteRow(table string, args ...any)
 }
 
 type supervisor struct {
