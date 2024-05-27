@@ -9,25 +9,34 @@ import (
 	_ "github.com/mattn/go-sqlite3"
 )
 
+type Monitor interface {
+	WriteEvent(frmt string, args ...any)
+	NewData(count int, size int64)
+	ProcessedData(count int, size int64)
+	IsCancel() bool
+	Cancel() chan bool
+}
+
 type Storage struct {
 	metadata metaData
 
 	cacheInsertValueSQL map[string]string
 
-	db *sql.DB
+	monitor Monitor
+	db      *sql.DB
 }
 
 // Конструктор Storage
-func CreateCache() (*Storage, error) {
+func CreateCache(monitor Monitor) (*Storage, error) {
 
 	var err error
 
-	obj := newStorage()
+	obj := newStorage(monitor)
 	if obj.db, err = openDB(""); err != nil {
 		return nil, err
 	}
 
-	obj.metadata.initDB(obj.db, true)
+	initDB(obj.db, obj.metadata, true)
 
 	return obj, nil
 }
@@ -38,7 +47,7 @@ func Open(stroragePath string) (obj *Storage, err error) {
 		return nil, fmt.Errorf("open storage: %v", err)
 	}
 
-	obj = newStorage()
+	obj = newStorage(nil)
 	if obj.db, err = openDB(stroragePath); err != nil {
 		return nil, err
 	}
@@ -56,10 +65,10 @@ func (obj *Storage) FlushAll(stroragePath string) error {
 	if err != nil {
 		return err
 	}
-	obj.metadata.initDB(db, false)
+	initDB(db, obj.metadata, false)
 	db.Close()
 
-	obj.metadata.saveAll(obj.db, stroragePath)
+	obj.saveAll(stroragePath)
 
 	return nil
 
@@ -142,7 +151,7 @@ func (obj *Storage) SelectAllProcesses() (data []Process, err error) {
 func (obj *Storage) WriteRow(table string, args ...any) {
 	query, ok := obj.cacheInsertValueSQL[table]
 	if !ok {
-		query = obj.metadata.getInsertValueSQL(table)
+		query = obj.metadata.GetInsertValueSQL(table)
 		obj.cacheInsertValueSQL[table] = query
 	}
 
@@ -152,6 +161,15 @@ func (obj *Storage) WriteRow(table string, args ...any) {
 }
 
 ///////////////////////////////////////////////////////////////////////////////
+
+func newStorage(monitor Monitor) *Storage {
+	obj := new(Storage)
+	obj.metadata = NewMetadata()
+	obj.cacheInsertValueSQL = make(map[string]string)
+	obj.monitor = monitor
+
+	return obj
+}
 
 func openDB(stroragePath string) (*sql.DB, error) {
 	var dataSource string
@@ -182,10 +200,29 @@ func openDB(stroragePath string) (*sql.DB, error) {
 	return db, nil
 }
 
-func newStorage() *Storage {
-	obj := new(Storage)
-	obj.metadata.init()
-	obj.cacheInsertValueSQL = make(map[string]string)
+func initDB(db *sql.DB, meta metaData, isCache bool) {
+	for _, table := range meta.InitDB(isCache) {
+		if _, err := db.Exec(table); err != nil {
+			panic(err)
+		}
+	}
+}
 
-	return obj
+func (obj *Storage) saveAll(dbPath string) {
+	if _, err := obj.db.Exec("ATTACH DATABASE '" + dbPath + "' AS datafile"); err != nil {
+		panic(err)
+	}
+
+	parts := obj.metadata.SaveAll("datafile")
+	obj.monitor.NewData(len(parts), 0)
+	for _, part := range parts {
+		if _, err := obj.db.Exec(part); err != nil {
+			panic(fmt.Errorf("query: %s\nerror: %w", part, err))
+		}
+		obj.monitor.ProcessedData(1, 0)
+	}
+
+	if _, err := obj.db.Exec("DETACH datafile"); err != nil {
+		panic(err)
+	}
 }

@@ -84,10 +84,10 @@ func (obj *lineChecker) doRead(sIn io.Reader) {
 	for {
 		buf := obj.poolBuf.Get().(*[]byte)
 		if n := readBuffer(*buf); n == 0 {
-			obj.monitor.FinishedData(1, 0)
+			obj.monitor.ProcessedData(1, 0)
 			break
 		} else {
-			obj.monitor.FinishedData(0, int64(n))
+			obj.monitor.ProcessedData(0, int64(n))
 			obj.chBuf <- streamBuffer{buf, n}
 		}
 	}

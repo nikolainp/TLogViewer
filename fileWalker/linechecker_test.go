@@ -10,9 +10,10 @@ type mockMonitor struct {
 }
 
 func (obj *mockMonitor) WriteEvent(frmt string, args ...any) {}
-func (obj *mockMonitor) NewData(size int64)                  {}
-func (obj *mockMonitor) FinishedData(count, size int64)      {}
+func (obj *mockMonitor) NewData(count int, size int64)       {}
+func (obj *mockMonitor) ProcessedData(count int, size int64) {}
 func (obj *mockMonitor) IsCancel() bool                      { return false }
+func (obj *mockMonitor) Cancel() chan bool                   { return nil }
 
 func Test_processStream(t *testing.T) {
 	var obj lineChecker

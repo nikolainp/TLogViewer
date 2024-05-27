@@ -9,12 +9,14 @@ import (
 
 type CancelFunc func() bool
 
-type monitor struct {
-	filesTotal    int64
-	filesFinished int64
+type Monitor struct {
+	partsTotal    int
+	partsFinished int
 	sizeTotal     int64
 	sizeFinished  int64
 	messageBuffer []string
+
+	fmtShowProgress string
 
 	startTime time.Time
 	ticker    *time.Ticker
@@ -25,10 +27,8 @@ type monitor struct {
 	cancelChan chan bool
 }
 
-func New(isCancelChan chan bool) *monitor {
-	obj := new(monitor)
-	obj.startTime = time.Now()
-	obj.ticker = time.NewTicker(500 * time.Millisecond)
+func New(isCancelChan chan bool) *Monitor {
+	obj := new(Monitor)
 	obj.done = make(chan bool)
 
 	obj.cancelChan = isCancelChan
@@ -37,41 +37,53 @@ func New(isCancelChan chan bool) *monitor {
 	//return &monitor{startTime: time.Now()}
 }
 
-func (obj *monitor) WriteEvent(frmt string, args ...any) {
+func (obj *Monitor) WriteEvent(frmt string, args ...any) {
 	defer obj.mu.Unlock()
 	obj.mu.Lock()
 
 	obj.messageBuffer = append(obj.messageBuffer, fmt.Sprintf(frmt, args...))
 }
 
-func (obj *monitor) NewData(size int64) {
+func (obj *Monitor) NewData(count int, size int64) {
 	defer obj.mu.Unlock()
 	obj.mu.Lock()
 
-	obj.filesTotal++
+	obj.partsTotal += count
 	obj.sizeTotal += size
 }
 
-func (obj *monitor) FinishedData(count, size int64) {
+func (obj *Monitor) ProcessedData(count int, size int64) {
 	defer obj.mu.Unlock()
 	obj.mu.Lock()
 
-	obj.filesFinished += count
+	obj.partsFinished += count
 	obj.sizeFinished += size
 }
 
-func (obj *monitor) Start() {
+func (obj *Monitor) Start(showProgress string) {
+	obj.Stop()
+
+	obj.partsTotal = 0
+	obj.partsFinished = 0
+	obj.sizeTotal = 0
+	obj.sizeFinished = 0
+	obj.fmtShowProgress = showProgress + "          \r"
+
 	obj.print()
 }
 
-func (obj *monitor) Stop() {
+func (obj *Monitor) Stop() {
+	if obj.ticker == nil {
+		return
+	}
+
 	defer obj.ticker.Stop()
 
 	obj.done <- true
 	obj.wg.Wait()
 }
 
-func (obj *monitor) IsCancel() bool {
+func (obj *Monitor) IsCancel() bool {
 	select {
 	case _, ok := <-obj.cancelChan:
 		return !ok
@@ -80,15 +92,18 @@ func (obj *monitor) IsCancel() bool {
 	}
 }
 
-func (obj *monitor) Cancel() chan bool {
+func (obj *Monitor) Cancel() chan bool {
 	return obj.cancelChan
 }
 
 ///////////////////////////////////////////////////////////////////////////////
 
-func (obj *monitor) print() {
+func (obj *Monitor) print() {
 	var prevFinishedSize int64
 	var prevDuration time.Duration
+
+	obj.startTime = time.Now()
+	obj.ticker = time.NewTicker(500 * time.Millisecond)
 
 	doPrint := func() {
 		defer obj.mu.Unlock()
@@ -117,17 +132,12 @@ func (obj *monitor) print() {
 		}
 		obj.messageBuffer = obj.messageBuffer[:0]
 
+		//"files: %d/%d size: %s/%s time: %s [speed %s/s/%s/s ]                           \r",
 		fmt.Fprintf(os.Stderr,
-			"files: %d/%d size: %s/%s time: %s [speed %s/s/%s/s ]                           \r",
-			obj.filesFinished, obj.filesTotal,
+			obj.fmtShowProgress,
+			obj.partsFinished, obj.partsTotal,
 			byteCount(obj.sizeFinished), byteCount(obj.sizeTotal), totalDuration,
 			byteCount(speed), byteCount(totalSpeed))
-
-		// fmt.Fprintf(os.Stderr,
-		// 	"%s %s [%f]: in work: %d finished: %d\r",
-		// 	byteCount(obj.sizeTotal), totalDuration,
-		// 	speed,
-		// 	obj.streamsInWork, obj.streamsFinished)
 	}
 
 	obj.wg.Add(1)

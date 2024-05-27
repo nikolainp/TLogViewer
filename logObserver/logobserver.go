@@ -6,8 +6,8 @@ import (
 
 type Monitor interface {
 	WriteEvent(frmt string, args ...any)
-	NewData(size int64)
-	FinishedData(count, size int64)
+	NewData(count int, size int64)
+	ProcessedData(count int, size int64)
 	IsCancel() bool
 	Cancel() chan bool
 }

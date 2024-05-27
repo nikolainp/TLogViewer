@@ -45,16 +45,17 @@ func main() {
 		monitor := monitor.New(cancelChan)
 		walker := filewalker.New(monitor)
 
-		monitor.Start()
+		monitor.Start("Load data: files: %d/%d size: %s/%s time: %s [speed %s/s/%s/s ]")
 
 		monitor.WriteEvent("Data catalog: %s\n", conf.DataPath)
 		monitor.WriteEvent("Storage: %s\n", conf.StoragePath)
 
-		storage = getNewStorage()
+		storage = getNewStorage(monitor)
 		observer := logobserver.New(monitor, storage, conf.DataPath, version)
 		walker.Walk(conf.DataPath, observer.ConsiderEvent)
 		observer.FlushAll()
 
+		monitor.Start("Save data: parts: %[1]d/%[2]d time: %[5]s")
 		storage.FlushAll(conf.StoragePath)
 		monitor.Stop()
 	} else {
@@ -93,9 +94,9 @@ func cancelAndExit() {
 
 ///////////////////////////////////////////////////////////////////////////////
 
-func getNewStorage() *storage.Storage {
+func getNewStorage(monitor *monitor.Monitor) *storage.Storage {
 
-	db, err := storage.CreateCache()
+	db, err := storage.CreateCache(monitor)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Storage error: %v\n", err)
 		cancelAndExit()

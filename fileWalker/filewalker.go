@@ -10,9 +10,10 @@ import (
 
 type Monitor interface {
 	WriteEvent(frmt string, args ...any)
-	NewData(size int64)
-	FinishedData(count, size int64)
+	NewData(count int, size int64)
+	ProcessedData(count int, size int64)
 	IsCancel() bool
+	Cancel() chan bool
 }
 type EventWalkFunc func(string, string, string)
 
@@ -70,7 +71,7 @@ func (obj *pathWalker) startWalk(basePath string) {
 			return nil
 		}
 
-		obj.monitor.NewData(info.Size())
+		obj.monitor.NewData(1, info.Size())
 		obj.filePaths <- path
 		//obj.processFile(path)
 
@@ -108,15 +109,15 @@ func (obj *pathWalker) processFile() {
 
 	for {
 		select {
+		case _, ok := <-obj.monitor.Cancel():
+			if !ok {
+				return
+			}
 		case fileName, ok := <-obj.filePaths:
 			if !ok {
 				return
 			}
 			doWork(fileName)
-		}
-
-		if obj.monitor.IsCancel() {
-			return
 		}
 	}
 }

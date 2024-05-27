@@ -1,12 +1,17 @@
 package storage
 
 import (
-	"database/sql"
 	"fmt"
 	"strings"
 )
 
-type metaData struct {
+type metaData interface {
+	InitDB(isCache bool) []string
+	SaveAll(schema string) []string
+	GetInsertValueSQL(table string) string
+}
+
+type implMetaData struct {
 	tables map[string]metaTable
 }
 
@@ -26,7 +31,45 @@ type metaColumn struct {
 
 ///////////////////////////////////////////////////////////////////////////////
 
-func (obj *metaData) init() {
+func NewMetadata() metaData {
+	obj := new(implMetaData)
+	obj.init()
+	return obj
+}
+
+func (obj *implMetaData) InitDB(isCache bool) []string {
+	queries := make([]string, 0, len(obj.tables))
+
+	for _, table := range obj.tables {
+		if table.isCache && !isCache {
+			continue
+		}
+		queries = append(queries, table.getCreateSQL(isCache))
+	}
+
+	return queries
+}
+
+func (obj *implMetaData) SaveAll(schema string) []string {
+	queries := make([]string, 0, len(obj.tables))
+
+	for _, table := range obj.tables {
+		if table.isCache {
+			continue
+		}
+		queries = append(queries, table.getInsertSelectSQL())
+	}
+
+	return queries
+}
+
+func (obj *implMetaData) GetInsertValueSQL(table string) string {
+	return obj.tables[table].getInsertValueSQL()
+}
+
+///////////////////////////////////////////////////////////////////////////////
+
+func (obj *implMetaData) init() {
 	obj.tables = map[string]metaTable{
 		"details": {name: "details",
 			columns: []metaColumn{
@@ -59,62 +102,6 @@ func (obj *metaData) init() {
 		},
 	}
 }
-
-func (obj *metaData) initDB(db *sql.DB, isCache bool) {
-
-	for _, table := range obj.tables {
-		if table.isCache && !isCache {
-			continue
-		}
-		if _, err := db.Exec(table.getCreateSQL(isCache)); err != nil {
-			panic(err)
-		}
-	}
-}
-
-func (obj *metaData) saveAll(db *sql.DB, dbPath string) {
-
-	if _, err := db.Exec("ATTACH DATABASE '" + dbPath + "' AS datafile"); err != nil {
-		panic(err)
-	}
-
-	for _, table := range obj.tables {
-		if table.isCache {
-			continue
-		}
-		query := table.getInsertSelectSQL()
-		if _, err := db.Exec(query); err != nil {
-			panic(fmt.Errorf("query: %s\nerror: %w", query, err))
-		}
-	}
-
-	{
-		var seq, name, file string
-		query :=
-			`PRAGMA database_list`
-
-		rows, err := db.Query(query)
-		if err != nil {
-			err = fmt.Errorf("selectDetails: %w", err)
-			return
-		}
-
-		for rows.Next() {
-			rows.Scan(&seq, &name, &file)
-			fmt.Printf("DB: %s %s %s\n", seq, name, file)
-		}
-	}
-
-	if _, err := db.Exec("DETACH datafile"); err != nil {
-		panic(err)
-	}
-}
-
-func (obj *metaData) getInsertValueSQL(table string) string {
-	return obj.tables[table].getInsertValueSQL()
-}
-
-///////////////////////////////////////////////////////////////////////////////
 
 func (obj *metaTable) getCreateSQL(isCache bool) string {
 
