@@ -8,7 +8,12 @@ import (
 type metaData interface {
 	InitDB(isCache bool) []string
 	SaveAll(schema string) []string
+
 	GetInsertValueSQL(table string) string
+	GetUpdateSQL(table string, fields ...any) string
+	//	SetIdByGroup(table string, column, group string) string
+
+	SelectColumnsSQL(table string, columns string) string
 }
 
 type implMetaData struct {
@@ -67,6 +72,49 @@ func (obj *implMetaData) GetInsertValueSQL(table string) string {
 	return obj.tables[table].getInsertValueSQL()
 }
 
+// func (obj *implMetaData) SetIdByGroup(table string, column, group string) string {
+// 	return `WITH WindowOrder AS (
+// 		SELECT
+// 			 row_number() OVER (
+// 					 ORDER BY process, pid
+// 				 ) RowNum,
+// 				 process, pid
+// 		 FROM processesPerfomance
+// 		 GROUP BY process, pid
+// 	  )
+// 	 UPDATE processesPerfomance
+// 	 SET processID = (SELECT RowNum
+// 	 FROM WindowOrder
+// 	 WHERE
+// 		 process = WindowOrder.process
+// 		 AND pid = WindowOrder.pid)`
+// }
+
+func (obj *implMetaData) SelectColumnsSQL(table string, columns string) (query string) {
+
+	query = fmt.Sprintf("SELECT DISTINCT %s FROM %s", columns, table)
+
+	return
+}
+
+func (obj *implMetaData) GetUpdateSQL(table string, fields ...any) (query string) {
+
+	where := make([]string, 0, len(fields))
+	for i := range(fields) {
+		if i ==0 {continue}
+		where = append(where, fmt.Sprintf("%s = ?", fields[i]))
+	}
+
+	if len(where) == 0 {
+		query = fmt.Sprintf("UPDATE %s SET %s = ? ", table, fields[0])
+	} else {
+		query = fmt.Sprintf("UPDATE %s SET %s = ? WHERE %s", table, fields[0], strings.Join(where, " AND "))
+	}
+
+	return
+}
+
+
 ///////////////////////////////////////////////////////////////////////////////
 
 func (obj *implMetaData) init() {
@@ -90,7 +138,7 @@ func (obj *implMetaData) init() {
 		"processesPerfomance": {name: "processesPerfomance",
 			columns: []metaColumn{
 				{name: "processID", datatype: "NUMBER", isService: true}, {name: "eventTime", datatype: "DATATIME"},
-				{name: "process", datatype: "TEXT", isCache: true}, {name: "pid", datatype: "TEXT", isCache: true},
+				{name: "process", datatype: "TEXT", isCache: false}, {name: "pid", datatype: "TEXT", isCache: false},
 				{name: "cpu", datatype: "NUMBER"},
 				{name: "queue_length", datatype: "NUMBER"},
 				{name: "queue_lengthByCpu", datatype: "NUMBER"},

@@ -11,10 +11,10 @@ type event struct {
 	fileName  string
 	eventData string
 
-	startTime         time.Time
-	stopTime          time.Time
-	duration          time.Duration
-	eventType         string
+	startTime time.Time
+	stopTime  time.Time
+	duration  time.Duration
+	eventType string
 }
 type chanEvents chan event
 
@@ -82,6 +82,32 @@ func (obj *processor) FlushAll() {
 	if err := obj.clusterState.flushAll(); err != nil {
 		obj.monitor.WriteEvent("error: %w\n", err)
 		return
+	}
+
+	//obj.storage.SetIdByGroup("processesPerfomance", "processID", "process, pid")
+
+	{
+
+		type processID struct {
+			id int
+			process, pid string
+		}
+		data := make([]processID, 0)
+
+		rows := obj.storage.SelectAll("processesPerfomance", "process, pid")
+		for {
+			var row processID
+
+			row.id = len(data) + 1
+			ok := rows.Next(&row.process, &row.pid)
+			if !ok {
+				break
+			}
+			data = append(data, row)
+		}
+		for _, row := range data {
+			obj.storage.Update("processesPerfomance", "processID", row.id, "process", row.process, "pid", row.pid)
+		}
 	}
 }
 

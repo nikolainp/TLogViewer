@@ -17,6 +17,10 @@ type Monitor interface {
 	Cancel() chan bool
 }
 
+type QueryResult interface {
+	Next(args ...any) bool
+}
+
 type Storage struct {
 	metadata metaData
 
@@ -24,6 +28,10 @@ type Storage struct {
 
 	monitor Monitor
 	db      *sql.DB
+}
+
+type queryResult struct {
+	data *sql.Rows
 }
 
 // Конструктор Storage
@@ -148,6 +156,15 @@ func (obj *Storage) SelectAllProcesses() (data []Process, err error) {
 	return
 }
 
+func (obj *Storage) SelectAll(table string, columns string) interface{ Next(args ...any) bool } {
+	query := obj.metadata.SelectColumnsSQL(table, columns)
+	rows, err := obj.db.Query(query)
+	if err != nil {
+		panic(fmt.Errorf("\nquery: %s\nerror: %w", query, err))
+	}
+	return &queryResult{data: rows}
+}
+
 func (obj *Storage) WriteRow(table string, args ...any) {
 	query, ok := obj.cacheInsertValueSQL[table]
 	if !ok {
@@ -158,6 +175,66 @@ func (obj *Storage) WriteRow(table string, args ...any) {
 	if _, err := obj.db.Exec(query, args...); err != nil {
 		panic(fmt.Errorf("\nquery: %s\nerror: %w", query, err))
 	}
+}
+
+func (obj *Storage) Update(table string, args ...any) {
+
+	fields := make([]any, 0, len(args))
+	values := make([]any, 0, len(args))
+
+	for i := range args {
+		if i%2 == 0 {
+			fields = append(fields, args[i])
+		} else {
+			values = append(values, args[i])
+		}
+	}
+
+	query := obj.metadata.GetUpdateSQL(table, fields...)
+
+	if _, err := obj.db.Exec(query, values...); err != nil {
+
+		qq := "PRAGMA table_list"
+		rows, err := obj.db.Query(qq)
+		if err != nil {
+			panic(fmt.Errorf("\nquery: %s\nerror: %w", query, err))
+		}
+
+		for rows.Next() {
+			var schema, name, ttype string
+			var ncol int
+			var wr, strict bool
+			rows.Scan(&schema, &name, &ttype, &ncol, &wr, &strict)
+
+			fmt.Printf("name: %s\n", name)
+		}
+	
+
+		panic(fmt.Errorf("\nquery: %s\nerror: %w", query, err))
+	}
+}
+
+// func (obj *Storage) SetIdByGroup(table string, column, group string) {
+// 	query := obj.metadata.SetIdByGroup(table, column, group)
+
+// 	if _, err := obj.db.Exec(query); err != nil {
+// 		panic(fmt.Errorf("\nquery: %s\nerror: %w", query, err))
+// 	}
+
+// }
+
+///////////////////////////////////////////////////////////////////////////////
+
+func (obj *queryResult) Next(args ...any) (ok bool) {
+
+	ok = obj.data.Next()
+	if ok {
+		if err := obj.data.Scan(args...); err != nil {
+			panic(fmt.Errorf("\nerror: %w", err))
+		}
+	}
+
+	return
 }
 
 ///////////////////////////////////////////////////////////////////////////////
