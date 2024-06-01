@@ -15,13 +15,13 @@ type Monitor interface {
 type Storage interface {
 	WriteRow(table string, args ...any)
 	Update(table string, args ...any)
-//	SetIdByGroup(table string, column, group string)
-	SelectAll(table string, columns string) (interface{
+	//	SetIdByGroup(table string, column, group string)
+	SelectAll(table string, columns string) interface {
 		Next(args ...any) bool
-	})
+	}
 }
 
-type QueryResult interface{
+type QueryResult interface {
 	Next(args ...any) (bool, error)
 }
 

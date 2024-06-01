@@ -38,19 +38,23 @@ func (obj *clusterState) addEvent(data event) {
 	} else {
 		obj.curProcess = newClusterProcess(data)
 		obj.processes[data.catalog] = obj.curProcess
+		obj.curProcess.processID = len(obj.processes)
 	}
 }
 
 func (obj *clusterState) flushAll() error {
+
+	obj.agentStandardCallFinish()
+
 	for _, process := range obj.processes {
 		obj.storage.WriteRow("processes",
-			process.name,
-			process.catalog,
-			process.process,
-			0,
-			0,
+			process.name, process.catalog, process.process,
+			process.processID,
+			process.processType,
+			process.pid, process.port,
+			process.UID,
+			process.serverName,
 			process.firstEventTime, process.lastEventTime,
-			0, "",
 		)
 	}
 	return nil
@@ -128,11 +132,48 @@ func (obj *clusterState) agentStandardCall(data event) {
 		response_time, average_response_time)
 }
 
+func (obj *clusterState) agentStandardCallFinish() {
+
+	rows := obj.storage.SelectAll("processesPerfomance", "process, pid")
+	for {
+		var serverName, pid string
+
+		ok := rows.Next(&serverName, &pid)
+		if !ok {
+			break
+		}
+		serverName = strings.Replace(serverName, "tcp://", "", 1)
+		port := getSimpleProperty(serverName, ":")
+		serverName = strings.Replace(serverName, ":"+port, "", 1)
+
+		for _, process := range obj.processes {
+			if strings.Compare(process.serverName, serverName) == 0 &&
+				process.pid == pid {
+				process.port = port
+				break
+			}
+		}
+
+	}
+	for _, process := range obj.processes {
+		obj.storage.Update("processesPerfomance", "processID", process.processID,
+			"process", "tcp://"+process.serverName+":"+process.port, "pid", process.pid)
+	}
+
+}
+
 ///////////////////////////////////////////////////////////////////////////////
 
 type clusterProcess struct {
 	name, catalog, process string
-	//	pid, port              int
+
+	processID int
+
+	processType string
+	pid, port   string
+	UID         string
+	serverName  string
+
 	firstEventTime time.Time
 	lastEventTime  time.Time
 }
@@ -142,6 +183,9 @@ func newClusterProcess(data event) *clusterProcess {
 	obj.name = data.catalog
 	obj.catalog = filepath.Dir(data.catalog)
 	obj.process = filepath.Base(data.catalog)
+
+	obj.processType = getSimpleProperty(data.eventData, ",process=")
+	obj.pid = getSimpleProperty(obj.process, "_")
 
 	obj.firstEventTime = data.stopTime
 	obj.lastEventTime = data.stopTime
@@ -155,5 +199,19 @@ func (obj *clusterProcess) addEvent(data event) {
 	}
 	if obj.lastEventTime.Before(data.stopTime) {
 		obj.lastEventTime = data.stopTime
+	}
+
+	// server name
+	{
+		isTrueEvent := func(data event) bool {
+			return data.eventType == "CONN" &&
+				strings.Contains(data.eventData, "'addrBelongsToThisComputer2,") &&
+				strings.Contains(data.eventData, ", result=true'")
+		}
+
+		if obj.serverName == "" && isTrueEvent(data) {
+			obj.serverName = getSimpleProperty(data.eventData, ", address=")
+		}
+
 	}
 }

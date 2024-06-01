@@ -28,10 +28,12 @@ type metaTable struct {
 }
 
 type metaColumn struct {
-	name      string
-	datatype  string
-	isCache   bool
-	isService bool
+	name     string
+	datatype string
+
+	isCache     bool
+	isService   bool
+	isTimeStamp bool
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -100,8 +102,10 @@ func (obj *implMetaData) SelectColumnsSQL(table string, columns string) (query s
 func (obj *implMetaData) GetUpdateSQL(table string, fields ...any) (query string) {
 
 	where := make([]string, 0, len(fields))
-	for i := range(fields) {
-		if i ==0 {continue}
+	for i := range fields {
+		if i == 0 {
+			continue
+		}
 		where = append(where, fmt.Sprintf("%s = ?", fields[i]))
 	}
 
@@ -113,7 +117,6 @@ func (obj *implMetaData) GetUpdateSQL(table string, fields ...any) (query string
 
 	return
 }
-
 
 ///////////////////////////////////////////////////////////////////////////////
 
@@ -130,14 +133,18 @@ func (obj *implMetaData) init() {
 		"processes": {name: "processes",
 			columns: []metaColumn{
 				{name: "name", datatype: "TEXT"}, {name: "catalog", datatype: "TEXT"}, {name: "process", datatype: "TEXT"},
-				{name: "pid", datatype: "NUMBER"}, {name: "port", datatype: "NUMBER"},
+				{name: "processID", datatype: "NUMBER"},
+				{name: "processType", datatype: "TEXT"},
+				{name: "pid", datatype: "TEXT"}, {name: "port", datatype: "TEXT"},
+				{name: "UID", datatype: "TEXT"},
+				{name: "serverName", datatype: "TEXT"},
 				{name: "firstEventTime", datatype: "DATETIME"}, {name: "lastEventTime", datatype: "DATETIME"},
-				{name: "processID", datatype: "NUMBER"}, {name: "server", datatype: "TEXT"},
 			},
 		},
 		"processesPerfomance": {name: "processesPerfomance",
 			columns: []metaColumn{
-				{name: "processID", datatype: "NUMBER", isService: true}, {name: "eventTime", datatype: "DATATIME"},
+				{name: "processID", datatype: "NUMBER", isService: true}, 
+				{name: "eventTime", datatype: "DATATIME", isTimeStamp: true},
 				{name: "process", datatype: "TEXT", isCache: false}, {name: "pid", datatype: "TEXT", isCache: false},
 				{name: "cpu", datatype: "NUMBER"},
 				{name: "queue_length", datatype: "NUMBER"},

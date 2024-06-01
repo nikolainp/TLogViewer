@@ -86,29 +86,6 @@ func (obj *processor) FlushAll() {
 
 	//obj.storage.SetIdByGroup("processesPerfomance", "processID", "process, pid")
 
-	{
-
-		type processID struct {
-			id int
-			process, pid string
-		}
-		data := make([]processID, 0)
-
-		rows := obj.storage.SelectAll("processesPerfomance", "process, pid")
-		for {
-			var row processID
-
-			row.id = len(data) + 1
-			ok := rows.Next(&row.process, &row.pid)
-			if !ok {
-				break
-			}
-			data = append(data, row)
-		}
-		for _, row := range data {
-			obj.storage.Update("processesPerfomance", "processID", row.id, "process", row.process, "pid", row.pid)
-		}
-	}
 }
 
 func (obj *event) addProperties() (err error) {
@@ -144,4 +121,21 @@ func (obj *event) addProperties() (err error) {
 	obj.eventData = obj.eventData[dataStartPosition:]
 
 	return nil
+}
+
+///////////////////////////////////////////////////////////////////////////////
+
+func getSimpleProperty(data string, name string) string {
+	start := strings.Index(data, name)
+	if start == -1 {
+		return ""
+	}
+	start += len(name)
+
+	length := strings.Index(data[start:], ",")
+	if length == -1 {
+		return data[start:]
+	}
+
+	return data[start : start+length]
 }
