@@ -53,7 +53,7 @@ func (obj *clusterState) flushAll() error {
 			process.processType,
 			process.pid, process.port,
 			process.UID,
-			process.serverName,
+			process.server,
 			process.firstEventTime, process.lastEventTime,
 		)
 	}
@@ -147,7 +147,7 @@ func (obj *clusterState) agentStandardCallFinish() {
 		serverName = strings.Replace(serverName, ":"+port, "", 1)
 
 		for _, process := range obj.processes {
-			if strings.Compare(process.serverName, serverName) == 0 &&
+			if strings.Compare(process.server, serverName) == 0 &&
 				process.pid == pid {
 				process.port = port
 				break
@@ -157,7 +157,7 @@ func (obj *clusterState) agentStandardCallFinish() {
 	}
 	for _, process := range obj.processes {
 		obj.storage.Update("processesPerfomance", "processID", process.processID,
-			"process", "tcp://"+process.serverName+":"+process.port, "pid", process.pid)
+			"process", "tcp://"+process.server+":"+process.port, "pid", process.pid)
 	}
 
 }
@@ -172,7 +172,8 @@ type clusterProcess struct {
 	processType string
 	pid, port   string
 	UID         string
-	serverName  string
+	server      string
+	ip          map[string]bool
 
 	firstEventTime time.Time
 	lastEventTime  time.Time
@@ -186,6 +187,8 @@ func newClusterProcess(data event) *clusterProcess {
 
 	obj.processType = getSimpleProperty(data.eventData, ",process=")
 	obj.pid = getSimpleProperty(obj.process, "_")
+
+	obj.ip = make(map[string]bool)
 
 	obj.firstEventTime = data.stopTime
 	obj.lastEventTime = data.stopTime
@@ -209,8 +212,19 @@ func (obj *clusterProcess) addEvent(data event) {
 				strings.Contains(data.eventData, ", result=true'")
 		}
 
-		if obj.serverName == "" && isTrueEvent(data) {
-			obj.serverName = getSimpleProperty(data.eventData, ", address=")
+		if isTrueEvent(data) {
+			address := getSimpleProperty(data.eventData, ", address=")
+
+			if isIPAddress(address) {
+				if strings.Compare(address, "[::1]") != 0 &&
+					strings.Compare(address, "127.0.0.1") != 0 {
+					obj.ip[address] = true
+				}
+			} else {
+				if len(obj.server) == 0 {
+					obj.server = address
+				}
+			}
 		}
 
 	}

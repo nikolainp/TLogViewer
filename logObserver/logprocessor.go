@@ -139,3 +139,40 @@ func getSimpleProperty(data string, name string) string {
 
 	return data[start : start+length]
 }
+
+func isIPAddress(data string) bool {
+	isNumber := func(data byte) bool {
+		if data == '0' || data == '1' || data == '2' || data == '3' ||
+			data == '4' || data == '5' || data == '6' || data == '7' ||
+			data == '8' || data == '9' {
+			return true
+		}
+
+		return false
+	}
+
+	if len(data) == 0 {
+		return false
+	}
+	if data[0] == '[' && data[len(data)-1] == ']' {
+		// IPv6
+		return true
+	}
+
+	maybePoint := false
+	for i := range data {
+		if !maybePoint && isNumber(data[i]) {
+			maybePoint = true
+			continue
+		}
+		if maybePoint && data[i] == '.' {
+			maybePoint = false
+			continue
+		}
+		if !isNumber(data[i]) {
+			return false
+		}
+	}
+
+	return true
+}
