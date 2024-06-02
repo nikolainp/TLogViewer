@@ -44,7 +44,38 @@ func (obj *clusterState) addEvent(data event) {
 
 func (obj *clusterState) flushAll() error {
 
+	{
+		getServerName := func(data map[string]bool) string {
+			for ip := range data {
+				for _, process := range obj.processes {
+					if len(process.server) == 0 {
+						continue
+					}
+					if _, ok := process.ip[ip]; ok {
+						return process.server
+					}
+				}
+			}
+			return ""
+		}
+
+		for _, process := range obj.processes {
+			if len(process.server) > 0 {
+				continue
+			}
+			process.server = getServerName(process.ip)
+		}
+	}
+
 	obj.agentStandardCallFinish()
+
+	mapToString := func(data map[string]bool) string {
+		res := make([]string, 0, len(data))
+		for key := range data {
+			res = append(res, key)
+		}
+		return strings.Join(res, "; ")
+	}
 
 	for _, process := range obj.processes {
 		obj.storage.WriteRow("processes",
@@ -53,7 +84,7 @@ func (obj *clusterState) flushAll() error {
 			process.processType,
 			process.pid, process.port,
 			process.UID,
-			process.server,
+			process.server, mapToString(process.ip),
 			process.firstEventTime, process.lastEventTime,
 		)
 	}
@@ -226,6 +257,23 @@ func (obj *clusterProcess) addEvent(data event) {
 				}
 			}
 		}
+	}
+	// server ip
+	{
+		isTrueEvent := func(data event) bool {
+			return data.eventType == "CONN" &&
+				strings.Contains(data.eventData, ",Protected=0,")
+		}
 
+		if isTrueEvent(data) {
+			address := getSimpleProperty(data.eventData, "Connected, client=")
+			address = getSubString(address, ")", ":")
+			if isIPAddress(address) {
+				if strings.Compare(address, "[::1]") != 0 &&
+					strings.Compare(address, "127.0.0.1") != 0 {
+					obj.ip[address] = true
+				}
+			}
+		}
 	}
 }

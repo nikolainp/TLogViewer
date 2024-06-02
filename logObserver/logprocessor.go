@@ -140,6 +140,24 @@ func getSimpleProperty(data string, name string) string {
 	return data[start : start+length]
 }
 
+func getSubString(data string, start string, finish string) string {
+	var startPos, finishPos int
+
+
+	if startPos = strings.Index(data, start); startPos == -1 {
+		startPos = 0
+	} else {
+		startPos +=  len(start)
+	}
+
+	finishPos = strings.Index(data[startPos:], finish)
+	if finishPos == -1 {
+		return data[startPos:]
+	}
+
+	return data[startPos:startPos+finishPos]
+}
+
 func isIPAddress(data string) bool {
 	isNumber := func(data byte) bool {
 		if data == '0' || data == '1' || data == '2' || data == '3' ||

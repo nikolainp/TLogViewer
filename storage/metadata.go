@@ -137,7 +137,7 @@ func (obj *implMetaData) init() {
 				{name: "processType", datatype: "TEXT"},
 				{name: "pid", datatype: "TEXT"}, {name: "port", datatype: "TEXT"},
 				{name: "UID", datatype: "TEXT"},
-				{name: "serverName", datatype: "TEXT"},
+				{name: "serverName", datatype: "TEXT"}, {name: "IP", datatype: "TEXT"},
 				{name: "firstEventTime", datatype: "DATETIME"}, {name: "lastEventTime", datatype: "DATETIME"},
 			},
 		},
