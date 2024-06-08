@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 	"text/template"
+	"time"
 )
 
 func (obj *WebReporter) rootPage(w http.ResponseWriter, req *http.Request) {
@@ -11,19 +12,10 @@ func (obj *WebReporter) rootPage(w http.ResponseWriter, req *http.Request) {
 	dataGraph, err := template.New("rootPage").Parse(rootPageTemplate)
 	checkErr(err)
 
-	title, version, processingSize, processingSpeed, processingTime, firstEventTime, lastEventTime, err := obj.storage.SelectDetails()
-	checkErr(err)
-
 	data := struct {
-		Title, Version                                string
-		ProcessingSize, ProcessingSpeed               string
-		ProcessingTime, FirstEventTime, LastEventTime string
+		Details rootDetails
 	}{
-		Title: title, Version: version,
-		ProcessingSize: byteCount(processingSize), ProcessingSpeed: byteCount(processingSpeed),
-		ProcessingTime: processingTime.Format("2006-01-02 15:04:05"),
-		FirstEventTime: firstEventTime.Format("2006-01-02 15:04:05"),
-		LastEventTime:  lastEventTime.Format("2006-01-02 15:04:05"),
+		Details: obj.getRootDetails(),
 	}
 
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
@@ -31,12 +23,41 @@ func (obj *WebReporter) rootPage(w http.ResponseWriter, req *http.Request) {
 	checkErr(err)
 }
 
+///////////////////////////////////////////////////////////////////////////////
+
+type rootDetails struct {
+	Title, Version                                string
+	ProcessingSize, ProcessingSpeed               string
+	ProcessingTime, FirstEventTime, LastEventTime string
+}
+
+func (obj *WebReporter) getRootDetails() (data rootDetails) {
+
+	var processingTime time.Time
+	var firstEventTime, lastEventTime time.Time
+
+	details := obj.storage.SelectAll("details", "")
+	details.Next(
+		&data.Title, &data.Version,
+		&data.ProcessingSize, &data.ProcessingSpeed,
+		&processingTime,
+		&firstEventTime, &lastEventTime)
+
+	data.ProcessingTime = processingTime.Format("2006-01-02 15:04:05")
+	data.FirstEventTime = firstEventTime.Format("2006-01-02 15:04:05")
+	data.LastEventTime = lastEventTime.Format("2006-01-02 15:04:05")
+
+	details.Next()
+
+	return
+}
+
 const rootPageTemplate = `
 <html>
 <head>
   <meta name="viewport" content="width=device-width, initial-scale=1">
 
-  <title>{{.Title}}</title>
+  <title>{{.Details.Title}}</title>
 
 
   <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
@@ -56,14 +77,14 @@ const rootPageTemplate = `
 </head>
 <body>
 	<div>
-		<h2>Источник данных: {{.Title}}</h2>
-		<h3>дата обработки: {{.ProcessingTime}} (версия {{.Version}})</br>
-			размер данных: {{.ProcessingSize}}</br>
-			скорость обработки: {{.ProcessingSpeed}}/сек.</h3>
+		<h2>Источник данных: {{.Details.Title}}</h2>
+		<h3>дата обработки: {{.Details.ProcessingTime}} (версия {{.Details.Version}})</br>
+			размер данных: {{.Details.ProcessingSize}}</br>
+			скорость обработки: {{.Details.ProcessingSpeed}}/сек.</h3>
 	</div>
 	<hr>
 	<div>
-		<h3>данные собирались с {{.FirstEventTime}} по {{.LastEventTime}}</h3>
+		<h3>данные собирались с {{.Details.FirstEventTime}} по {{.Details.LastEventTime}}</h3>
 	</div>
 	<hr>
 	<a href="/processes">процессы</a>

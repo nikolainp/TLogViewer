@@ -4,13 +4,12 @@ import (
 	"fmt"
 	"net/http"
 	"text/template"
-
-	"github.com/nikolainp/TLogViewer/storage"
+	"time"
 )
 
 func (obj *WebReporter) processes(w http.ResponseWriter, req *http.Request) {
 
-	toDataRows := func(data []storage.Process) []string {
+	toDataRows := func(data []process) []string {
 
 		rows := make([]string, len(data))
 
@@ -29,18 +28,12 @@ func (obj *WebReporter) processes(w http.ResponseWriter, req *http.Request) {
 	dataGraph, err := template.New("processes").Parse(processesTemplate)
 	checkErr(err)
 
-	title, err := obj.storage.SelectTitle()
-	checkErr(err)
-
-	processes, err := obj.storage.SelectAllProcesses()
-	checkErr(err)
-
 	data := struct {
-		Title     string
+		Details   rootDetails
 		Processes []string
 	}{
-		Title:     title,
-		Processes: toDataRows(processes),
+		Details:   obj.getRootDetails(),
+		Processes: toDataRows(obj.getProcesses()),
 	}
 
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
@@ -49,11 +42,46 @@ func (obj *WebReporter) processes(w http.ResponseWriter, req *http.Request) {
 
 }
 
+type process struct {
+	Name           string
+	Catalog        string
+	Process        string
+	ProcessID      string
+	ProcessType    string
+	Pid            string
+	Port           string
+	UID            string
+	ServerName     string
+	IP             string
+	FirstEventTime time.Time
+	LastEventTime  time.Time
+}
+
+func (obj *WebReporter) getProcesses() (data []process) {
+
+	var elem process
+
+	data = make([]process, 0)
+
+	details := obj.storage.SelectAll("processes", "")
+	for details.Next(
+		&elem.Name, &elem.Catalog, &elem.Process,
+		&elem.ProcessID, &elem.ProcessType,
+		&elem.Pid, &elem.Port, &elem.UID,
+		&elem.ServerName, &elem.IP,
+		&elem.FirstEventTime, &elem.LastEventTime) {
+
+		data = append(data, elem)
+	}
+
+	return
+}
+
 const processesTemplate = `
 <html>
 <head>
 
-  <title>{{.Title}} | Processes</title>
+  <title>{{.Details.Title}} | Processes</title>
 
   <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
   <script type="text/javascript">

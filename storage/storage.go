@@ -4,7 +4,6 @@ import (
 	"database/sql"
 	"fmt"
 	"os"
-	"time"
 
 	_ "github.com/mattn/go-sqlite3"
 )
@@ -82,80 +81,6 @@ func (obj *Storage) FlushAll(stroragePath string) error {
 
 }
 
-type Process struct {
-	Name           string
-	Catalog        string
-	Process        string
-	Pid            int
-	Port           int
-	FirstEventTime time.Time
-	LastEventTime  time.Time
-}
-
-func (obj *Storage) SelectTitle() (title string, err error) {
-	query :=
-		`SELECT title
-		FROM details 
-		LIMIT 1`
-
-	rows, err := obj.db.Query(query)
-	if err != nil {
-		err = fmt.Errorf("SelectDetails: %w", err)
-		return
-	}
-
-	rows.Next()
-	rows.Scan(&title)
-
-	return
-}
-
-func (obj *Storage) SelectDetails() (title, version string, processingSize, processingSpeed int64, processingTime, firstEventTime, lastEventTime time.Time, err error) {
-	query :=
-		`SELECT title, version, processingSize, processingSpeed, processingTime, firstEventTime, lastEventTime
-		FROM details 
-		LIMIT 1`
-
-	rows, err := obj.db.Query(query)
-	if err != nil {
-		err = fmt.Errorf("SelectDetails: %w", err)
-		return
-	}
-
-	rows.Next()
-	rows.Scan(&title, &version, &processingSize, &processingSpeed, &processingTime, &firstEventTime, &lastEventTime)
-
-	return
-}
-
-func (obj *Storage) SelectAllProcesses() (data []Process, err error) {
-	query :=
-		`SELECT name, catalog, process, pid, port, firstEventTime, lastEventTime 
-		FROM processes
-		ORDER BY catalog, process`
-
-	var name string
-	var catalog string
-	var process string
-	var pid int
-	var port int
-	var firstEvent, lastEvent time.Time
-
-	data = make([]Process, 0)
-
-	rows, err := obj.db.Query(query)
-	if err != nil {
-		return nil, fmt.Errorf("selectAllProcess: %w", err)
-	}
-
-	for rows.Next() {
-		rows.Scan(&name, &catalog, &process, &pid, &port, &firstEvent, &lastEvent)
-		data = append(data, Process{name, catalog, process, pid, port, firstEvent, lastEvent})
-	}
-
-	return
-}
-
 func (obj *Storage) SelectAll(table string, columns string) interface{ Next(args ...any) bool } {
 	query := obj.metadata.SelectColumnsSQL(table, columns)
 	rows, err := obj.db.Query(query)
@@ -208,7 +133,6 @@ func (obj *Storage) Update(table string, args ...any) {
 
 			fmt.Printf("name: %s\n", name)
 		}
-	
 
 		panic(fmt.Errorf("\nquery: %s\nerror: %w", query, err))
 	}

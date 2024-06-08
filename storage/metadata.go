@@ -94,6 +94,15 @@ func (obj *implMetaData) GetInsertValueSQL(table string) string {
 
 func (obj *implMetaData) SelectColumnsSQL(table string, columns string) (query string) {
 
+	if len(columns) == 0 {
+		names := make([]string, 0, 10)
+		metaColumns := obj.tables[table].columns
+		for i := range metaColumns {
+			names = append(names, metaColumns[i].name)
+		}
+		columns = strings.Join(names, ", ")
+	}
+
 	query = fmt.Sprintf("SELECT DISTINCT %s FROM %s", columns, table)
 
 	return
@@ -126,7 +135,7 @@ func (obj *implMetaData) init() {
 			columns: []metaColumn{
 				{name: "title", datatype: "TEXT"}, {name: "version", datatype: "TEXT"},
 				{name: "processingSize", datatype: "NUMBER"},
-				{name: "processingSpeed", datatype: "NUMBER"}, {name: "processingTime", datatype: "NUMBER"},
+				{name: "processingSpeed", datatype: "NUMBER"}, {name: "processingTime", datatype: "DATETIME"},
 				{name: "firstEventTime", datatype: "DATETIME"}, {name: "lastEventTime", datatype: "DATETIME"},
 			},
 		},
@@ -143,7 +152,7 @@ func (obj *implMetaData) init() {
 		},
 		"processesPerfomance": {name: "processesPerfomance",
 			columns: []metaColumn{
-				{name: "processID", datatype: "NUMBER", isService: true}, 
+				{name: "processID", datatype: "NUMBER", isService: true},
 				{name: "eventTime", datatype: "DATATIME", isTimeStamp: true},
 				{name: "process", datatype: "TEXT", isCache: false}, {name: "pid", datatype: "TEXT", isCache: false},
 				{name: "cpu", datatype: "NUMBER"},
