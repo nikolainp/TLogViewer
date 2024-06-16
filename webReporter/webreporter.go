@@ -12,6 +12,9 @@ type WebReporter struct {
 	storage *storage.Storage
 	srv     http.Server
 
+	title  string
+	filter dataFilter
+
 	port int
 }
 
@@ -26,6 +29,10 @@ func New(storage *storage.Storage) *WebReporter {
 		Addr:    fmt.Sprintf(":%d", obj.port),
 	}
 
+	details := obj.getRootDetails()
+	obj.title = details.Title
+	obj.filter.setTime(details.FirstEventTime, details.LastEventTime)
+
 	return obj
 }
 
@@ -38,7 +45,7 @@ func (obj *WebReporter) Start() {
 
 func (obj *WebReporter) getHandlers() *http.ServeMux {
 	sm := http.NewServeMux()
-	
+
 	sm.HandleFunc("/", obj.rootPage)
 	sm.HandleFunc("/processes", obj.processes)
 	sm.HandleFunc("/headers", obj.headers)

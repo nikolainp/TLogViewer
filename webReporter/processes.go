@@ -29,11 +29,13 @@ func (obj *WebReporter) processes(w http.ResponseWriter, req *http.Request) {
 	checkErr(err)
 
 	data := struct {
-		Details   rootDetails
-		Processes []string
+		Title      string
+		DataFilter string
+		Processes  []string
 	}{
-		Details:   obj.getRootDetails(),
-		Processes: toDataRows(obj.getProcesses()),
+		Title:      obj.title,
+		DataFilter: obj.filter.getContent(),
+		Processes:  toDataRows(obj.getProcesses()),
 	}
 
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
@@ -81,7 +83,7 @@ const processesTemplate = `
 <html>
 <head>
 
-  <title>{{.Details.Title}} | Processes</title>
+  <title>{{.Title}} | Processes</title>
 
   <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
   <script type="text/javascript">
@@ -168,6 +170,7 @@ const processesTemplate = `
 	</script>
 </head>
 <body>
+	{{.DataFilter}}
 	<div id="timeline_div">
 		<div id="serverfilter_div"></div>
   		<div id="gantt_div" style="width: 100%; height: calc(100% - 30px);">></div>
