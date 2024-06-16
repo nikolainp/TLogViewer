@@ -1,5 +1,5 @@
-PACKAGE_NAME          := github.com/goreleaser/goreleaser-cross-example
-GOLANG_CROSS_VERSION  ?= v1.19.5
+PACKAGE_NAME          := github.com/nikolainp/TLogViewer
+GOLANG_CROSS_VERSION  ?= latest
 
 SYSROOT_DIR     ?= sysroots
 SYSROOT_ARCHIVE ?= sysroots.tar.bz2
