@@ -34,7 +34,7 @@ func (obj *WebReporter) processes(w http.ResponseWriter, req *http.Request) {
 		Processes  []string
 	}{
 		Title:      obj.title,
-		DataFilter: obj.filter.getContent(),
+		DataFilter: obj.filter.getContent(req.URL.String()),
 		Processes:  toDataRows(obj.getProcesses()),
 	}
 

@@ -46,7 +46,7 @@ func (obj *WebReporter) rootPage(w http.ResponseWriter, req *http.Request) {
 		ProcessingSpeed: byteCount(details.ProcessingSpeed),
 		FirstEventTime:  details.FirstEventTime.Format("2006-01-02 15:04:05"),
 		LastEventTime:   details.LastEventTime.Format("2006-01-02 15:04:05"),
-		DataFilter:      obj.filter.getContent(),
+		DataFilter:      obj.filter.getContent(req.URL.String()),
 		Processes:       toDataRows(obj.getProcesses()),
 	}
 
