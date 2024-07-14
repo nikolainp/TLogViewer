@@ -65,7 +65,8 @@ func (obj *WebReporter) getProcesses() (data []process) {
 
 	data = make([]process, 0)
 
-	details := obj.storage.SelectAll("processes", "")
+	details := obj.storage.SelectQuery("processes", "")
+	details.SetFilter(obj.filter.getData())
 	for details.Next(
 		&elem.Name, &elem.Catalog, &elem.Process,
 		&elem.ProcessID, &elem.ProcessType,

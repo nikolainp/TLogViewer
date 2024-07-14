@@ -14,6 +14,7 @@ type metaData interface {
 	//	SetIdByGroup(table string, column, group string) string
 
 	SelectColumnsSQL(table string, columns string) string
+	GetFilterSQL(table string) string
 }
 
 type implMetaData struct {
@@ -23,17 +24,22 @@ type implMetaData struct {
 type metaTable struct {
 	name    string
 	columns []metaColumn
+
 	//insertStm *sql.Stmt
 	isCache bool
+
+	columnTimeFrom, columnTimeTo string
 }
 
 type metaColumn struct {
 	name     string
 	datatype string
 
-	isCache     bool
-	isService   bool
-	isTimeStamp bool
+	isCache   bool
+	isService bool
+
+	isTimeFrom bool
+	isTimeTo   bool
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -74,24 +80,6 @@ func (obj *implMetaData) GetInsertValueSQL(table string) string {
 	return obj.tables[table].getInsertValueSQL()
 }
 
-// func (obj *implMetaData) SetIdByGroup(table string, column, group string) string {
-// 	return `WITH WindowOrder AS (
-// 		SELECT
-// 			 row_number() OVER (
-// 					 ORDER BY process, pid
-// 				 ) RowNum,
-// 				 process, pid
-// 		 FROM processesPerfomance
-// 		 GROUP BY process, pid
-// 	  )
-// 	 UPDATE processesPerfomance
-// 	 SET processID = (SELECT RowNum
-// 	 FROM WindowOrder
-// 	 WHERE
-// 		 process = WindowOrder.process
-// 		 AND pid = WindowOrder.pid)`
-// }
-
 func (obj *implMetaData) SelectColumnsSQL(table string, columns string) (query string) {
 
 	if len(columns) == 0 {
@@ -106,6 +94,12 @@ func (obj *implMetaData) SelectColumnsSQL(table string, columns string) (query s
 	query = fmt.Sprintf("SELECT DISTINCT %s FROM %s", columns, table)
 
 	return
+}
+
+func (obj *implMetaData) GetFilterSQL(table string) (filter string) {
+
+	metaTable := obj.tables[table]
+	return fmt.Sprintf("%s >= ? and %s <= ?", metaTable.columnTimeTo, metaTable.columnTimeFrom)
 }
 
 func (obj *implMetaData) GetUpdateSQL(table string, fields ...any) (query string) {
@@ -147,13 +141,14 @@ func (obj *implMetaData) init() {
 				{name: "pid", datatype: "TEXT"}, {name: "port", datatype: "TEXT"},
 				{name: "UID", datatype: "TEXT"},
 				{name: "serverName", datatype: "TEXT"}, {name: "IP", datatype: "TEXT"},
-				{name: "firstEventTime", datatype: "DATETIME"}, {name: "lastEventTime", datatype: "DATETIME"},
+				{name: "firstEventTime", datatype: "DATETIME", isTimeFrom: true},
+				{name: "lastEventTime", datatype: "DATETIME", isTimeTo: true},
 			},
 		},
 		"processesPerfomance": {name: "processesPerfomance",
 			columns: []metaColumn{
 				{name: "processID", datatype: "NUMBER", isService: true},
-				{name: "eventTime", datatype: "DATATIME", isTimeStamp: true},
+				{name: "eventTime", datatype: "DATATIME", isTimeFrom: true, isTimeTo: true},
 				{name: "process", datatype: "TEXT", isCache: false}, {name: "pid", datatype: "TEXT", isCache: false},
 				{name: "cpu", datatype: "NUMBER"},
 				{name: "queue_length", datatype: "NUMBER"},
@@ -165,6 +160,21 @@ func (obj *implMetaData) init() {
 			},
 		},
 	}
+
+	for tableName, table := range obj.tables {
+		for _, column := range table.columns {
+			if column.isTimeFrom {
+				table.columnTimeFrom = column.name
+			}
+			if column.isTimeTo {
+				table.columnTimeTo = column.name
+			}
+		}
+		obj.tables[tableName] = table
+	}
+
+	return
+
 }
 
 func (obj *metaTable) getCreateSQL(isCache bool) string {

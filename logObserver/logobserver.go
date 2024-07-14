@@ -2,6 +2,7 @@ package logobserver
 
 import (
 	"sync"
+	"time"
 )
 
 type Monitor interface {
@@ -16,7 +17,11 @@ type Storage interface {
 	WriteRow(table string, args ...any)
 	Update(table string, args ...any)
 	//	SetIdByGroup(table string, column, group string)
-	SelectAll(table string, columns string) interface {
+	SelectQuery(table string, columns string) interface {
+		SetFilter(struct {
+			From time.Time
+			To   time.Time
+		})
 		Next(args ...any) bool
 	}
 }

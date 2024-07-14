@@ -16,10 +16,6 @@ type Monitor interface {
 	Cancel() chan bool
 }
 
-type QueryResult interface {
-	Next(args ...any) bool
-}
-
 type Storage struct {
 	metadata metaData
 
@@ -27,10 +23,6 @@ type Storage struct {
 
 	monitor Monitor
 	db      *sql.DB
-}
-
-type queryResult struct {
-	data *sql.Rows
 }
 
 // Конструктор Storage
@@ -81,14 +73,6 @@ func (obj *Storage) FlushAll(stroragePath string) error {
 
 }
 
-func (obj *Storage) SelectAll(table string, columns string) interface{ Next(args ...any) bool } {
-	query := obj.metadata.SelectColumnsSQL(table, columns)
-	rows, err := obj.db.Query(query)
-	if err != nil {
-		panic(fmt.Errorf("\nquery: %s\nerror: %w", query, err))
-	}
-	return &queryResult{data: rows}
-}
 
 func (obj *Storage) WriteRow(table string, args ...any) {
 	query, ok := obj.cacheInsertValueSQL[table]
@@ -147,19 +131,6 @@ func (obj *Storage) Update(table string, args ...any) {
 
 // }
 
-///////////////////////////////////////////////////////////////////////////////
-
-func (obj *queryResult) Next(args ...any) (ok bool) {
-
-	ok = obj.data.Next()
-	if ok {
-		if err := obj.data.Scan(args...); err != nil {
-			panic(fmt.Errorf("\nerror: %w", err))
-		}
-	}
-
-	return
-}
 
 ///////////////////////////////////////////////////////////////////////////////
 

@@ -65,7 +65,7 @@ type rootDetails struct {
 
 func (obj *WebReporter) getRootDetails() (data rootDetails) {
 
-	details := obj.storage.SelectAll("details", "")
+	details := obj.storage.SelectQuery("details", "")
 	details.Next(
 		&data.Title, &data.Version,
 		&data.ProcessingSize, &data.ProcessingSpeed,

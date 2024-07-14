@@ -165,7 +165,7 @@ func (obj *clusterState) agentStandardCall(data event) {
 
 func (obj *clusterState) agentStandardCallFinish() {
 
-	rows := obj.storage.SelectAll("processesPerfomance", "process, pid")
+	rows := obj.storage.SelectQuery("processesPerfomance", "process, pid")
 	for {
 		var serverName, pid string
 

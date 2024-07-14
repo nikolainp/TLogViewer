@@ -51,6 +51,13 @@ func (obj *dataFilter) setContext(w http.ResponseWriter, req *http.Request) {
 	http.Redirect(w, req, url, http.StatusSeeOther)
 }
 
+func (obj *dataFilter) getData() (filter struct{ From, To time.Time }) {
+	filter.From = obj.startTime
+	filter.To = obj.finishTime
+	
+	return 
+}
+
 const dataFilterTemplate = `
 <form method="post" action="/datafilter">
   <fieldset>
