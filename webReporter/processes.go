@@ -14,12 +14,15 @@ func (obj *WebReporter) processes(w http.ResponseWriter, req *http.Request) {
 		rows := make([]string, len(data))
 
 		for i := range data {
+			firstEventTime := obj.filter.getStartTime(data[i].FirstEventTime)
+			lastEventTime := obj.filter.getFinishTime(data[i].LastEventTime)
+
 			rows[i] = fmt.Sprintf("['%s', '%s', '%s', new Date(%s), new Date(%s), null, 100, null]",
 				data[i].Process,
 				template.JSEscapeString(data[i].Name),
 				data[i].Catalog,
-				data[i].FirstEventTime.Format("2006, 01, 02, 15, 04, 05"),
-				data[i].LastEventTime.Format("2006, 01, 02, 15, 04, 05"))
+				firstEventTime.Format("2006, 01, 02, 15, 04, 05"),
+				lastEventTime.Format("2006, 01, 02, 15, 04, 05"))
 		}
 
 		return rows

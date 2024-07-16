@@ -54,8 +54,24 @@ func (obj *dataFilter) setContext(w http.ResponseWriter, req *http.Request) {
 func (obj *dataFilter) getData() (filter struct{ From, To time.Time }) {
 	filter.From = obj.startTime
 	filter.To = obj.finishTime
-	
-	return 
+
+	return
+}
+
+func (obj *dataFilter) getStartTime(tt time.Time) time.Time {
+	if obj.startTime.Before(tt) {
+		return tt
+	}
+
+	return obj.startTime
+}
+
+func (obj *dataFilter) getFinishTime(tt time.Time) time.Time {
+	if obj.finishTime.After(tt) {
+		return tt
+	}
+
+	return obj.finishTime
 }
 
 const dataFilterTemplate = `
