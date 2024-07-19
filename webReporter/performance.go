@@ -7,7 +7,7 @@ import (
 	"time"
 )
 
-func (obj *WebReporter) processes(w http.ResponseWriter, req *http.Request) {
+func (obj *WebReporter) performance(w http.ResponseWriter, req *http.Request) {
 
 	toDataRows := func(data []process) []string {
 
@@ -28,7 +28,7 @@ func (obj *WebReporter) processes(w http.ResponseWriter, req *http.Request) {
 		return rows
 	}
 
-	dataGraph, err := template.New("processes").Parse(processesTemplate)
+	dataGraph, err := template.New("performance").Parse(performanceTemplate)
 	checkErr(err)
 
 	data := struct {
@@ -49,7 +49,7 @@ func (obj *WebReporter) processes(w http.ResponseWriter, req *http.Request) {
 
 }
 
-type process struct {
+type performance struct {
 	Name           string
 	Catalog        string
 	Process        string
@@ -64,7 +64,7 @@ type process struct {
 	LastEventTime  time.Time
 }
 
-func (obj *WebReporter) getProcesses() (data []process) {
+func (obj *WebReporter) getPerformance() (data []process) {
 
 	var elem process
 
@@ -85,7 +85,7 @@ func (obj *WebReporter) getProcesses() (data []process) {
 	return
 }
 
-const processesTemplate = `
+const performanceTemplate = `
 <html>
 <head>
 

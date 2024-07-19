@@ -37,6 +37,7 @@ func (obj *WebReporter) rootPage(w http.ResponseWriter, req *http.Request) {
 		ProcessingSpeed                string
 		FirstEventTime, LastEventTime  string
 		DataFilter                     string
+		Navigation                     string
 		Processes                      []string
 	}{
 		Title:           obj.title,
@@ -47,6 +48,7 @@ func (obj *WebReporter) rootPage(w http.ResponseWriter, req *http.Request) {
 		FirstEventTime:  details.FirstEventTime.Format("2006-01-02 15:04:05"),
 		LastEventTime:   details.LastEventTime.Format("2006-01-02 15:04:05"),
 		DataFilter:      obj.filter.getContent(req.URL.String()),
+		Navigation:      obj.navigator.getContent(),
 		Processes:       toDataRows(obj.getProcesses()),
 	}
 
@@ -129,8 +131,7 @@ const rootPageTemplate = `
 	</div>
 	<hr>
 	{{.DataFilter}}
-	<hr>
-	<a href="/processes">процессы</a>
+	{{.Navigation}}
 	<hr>
 	<div id="table_div"></div>
 

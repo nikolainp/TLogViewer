@@ -12,8 +12,9 @@ type WebReporter struct {
 	storage *storage.Storage
 	srv     http.Server
 
-	title  string
-	filter dataFilter
+	title     string
+	filter    dataFilter
+	navigator navigation
 
 	port int
 }
@@ -48,9 +49,11 @@ func (obj *WebReporter) getHandlers() *http.ServeMux {
 
 	sm.HandleFunc("/", obj.rootPage)
 	sm.HandleFunc("/processes", obj.processes)
-	sm.HandleFunc("/headers", obj.headers)
+	sm.HandleFunc("/performance", obj.performance)
 
 	sm.HandleFunc("/datafilter", obj.filter.setContext)
+
+	sm.HandleFunc("/headers", obj.headers)
 
 	return sm
 }

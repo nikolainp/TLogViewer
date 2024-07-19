@@ -21,7 +21,7 @@ func (obj *dataFilter) setTime(start, finish time.Time) {
 
 func (obj *dataFilter) getContent(url string) string {
 	w := new(strings.Builder)
-	dataFilter, err := template.New("dataFilter").Parse(dataFilterTemplate)
+	sample, err := template.New("dataFilter").Parse(dataFilterTemplate)
 	checkErr(err)
 
 	data := struct {
@@ -36,7 +36,7 @@ func (obj *dataFilter) getContent(url string) string {
 		FinishTime:  obj.finishTime.Format("2006-01-02T15:04"),
 	}
 
-	err = dataFilter.Execute(w, data)
+	err = sample.Execute(w, data)
 	checkErr(err)
 
 	return w.String()
