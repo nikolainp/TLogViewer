@@ -145,7 +145,7 @@ func (obj *implMetaData) init() {
 				{name: "lastEventTime", datatype: "DATETIME", isTimeTo: true},
 			},
 		},
-		"processesPerfomance": {name: "processesPerfomance",
+		"processesPerformance": {name: "processesPerformance",
 			columns: []metaColumn{
 				{name: "processID", datatype: "NUMBER", isService: true},
 				{name: "eventTime", datatype: "DATATIME", isTimeFrom: true, isTimeTo: true},

@@ -22,6 +22,7 @@ type Storage interface {
 			From time.Time
 			To   time.Time
 		})
+		SetGroup(fields ...string)
 		Next(args ...any) bool
 	}
 }

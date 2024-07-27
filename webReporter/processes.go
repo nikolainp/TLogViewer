@@ -18,7 +18,7 @@ func (obj *WebReporter) processes(w http.ResponseWriter, req *http.Request) {
 			lastEventTime := obj.filter.getFinishTime(data[i].LastEventTime)
 
 			rows[i] = fmt.Sprintf("['%s', '%s', '%s', new Date(%s), new Date(%s), null, 100, null]",
-				data[i].Process,
+				data[i].ProcessID,
 				template.JSEscapeString(data[i].Name),
 				data[i].Catalog,
 				firstEventTime.Format("2006, 01, 02, 15, 04, 05"),
@@ -137,7 +137,7 @@ const processesTemplate = `
 		'containerId': 'gantt_div',
 		'dataTable': data,
 		'options': {
-			'title': 'Время жизни процессов',
+			'label': 'Время жизни процессов',
 			'height': data.getNumberOfRows() * trackHeight + trackHeight,
 			'percentEnabled': false,
 		}
@@ -149,26 +149,17 @@ const processesTemplate = `
 	  google.visualization.events.addListener(ganttChart, 'select', selectHandler);
 
 	  function selectHandler(e) {
-		alert('A table row was selected');
 		var selection = ganttChart.getChart().getSelection();
-		var message = '';
-		for (var i = 0; i < selection.length; i++) {
-		  var item = selection[i];
-		  if (item.row != null && item.column != null) {
-			var str = data.getFormattedValue(item.row, item.column);
-			message += '{row:' + item.row + ',column:' + item.column + '} = ' + str + '\n';
-		  } else if (item.row != null) {
-			var str = data.getFormattedValue(item.row, 0);
-			message += '{row:' + item.row + ', column:none}; value (col 0) = ' + str + '\n';
-		  } else if (item.column != null) {
-			var str = data.getFormattedValue(0, item.column);
-			message += '{row:none, column:' + item.column + '}; value (row 0) = ' + str + '\n';
-		  }
+		if (selection.length != 1) {
+			return;
 		}
-		if (message == '') {
-		  message = 'nothing';
+		var item = selection[0];
+		if (item.row == null) {
+			return;
 		}
-		alert('You selected ' + message);
+		var str = data.getValue(item.row, 1);
+		
+		location.replace('/performance?processId=' + str)
 	  }
 
 	}
@@ -179,7 +170,7 @@ const processesTemplate = `
 	{{.DataFilter}}
 	{{.Navigation}}
 	<div id="timeline_div">
-		<div id="serverfilter_div"></div>
+		<div id="serverfilter_div" style="vertical-align: middle;"></div>
   		<div id="gantt_div" style="width: 100%; height: calc(100% - 30px);">></div>
 	</div>
 </body>

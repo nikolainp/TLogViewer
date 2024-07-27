@@ -64,13 +64,22 @@ type performance struct {
 	LastEventTime  time.Time
 }
 
+func (obj *WebReporter) getPerformanceStatistics() {
+	details := obj.storage.SelectQuery("processesPerformance", "")
+	details.SetFilter(obj.filter.getData())
+	details.SetGroup("processID")
+	for details.Next() {
+
+	}
+}
+
 func (obj *WebReporter) getPerformance() (data []process) {
 
 	var elem process
 
 	data = make([]process, 0)
 
-	details := obj.storage.SelectQuery("processes", "")
+	details := obj.storage.SelectQuery("processesPerformance", "")
 	details.SetFilter(obj.filter.getData())
 	for details.Next(
 		&elem.Name, &elem.Catalog, &elem.Process,
@@ -89,99 +98,99 @@ const performanceTemplate = `
 <html>
 <head>
 
-  <title>{{.Title}} | Processes</title>
+  <title>{{.Title}} | Performance</title>
 
   <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
   <script type="text/javascript">
+      google.charts.load('current', {'packages':['annotationchart']});
+      google.charts.setOnLoadCallback(drawChart);
 
-    // Load the Visualization API and the controls package.
-    google.charts.load('current', {'packages':['corechart', 'controls'], 'language': 'ru'});
+      let chart;
 
-    // Set a callback to run when the Google Visualization API is loaded.
-    google.charts.setOnLoadCallback(drawDashboard);
+      function drawChart() {
+        var columns = new google.visualization.DataTable();
+        columns.addColumn('string', 'Title');
+        columns.addColumn('number', 'Minimum');
+        columns.addColumn('number', 'Maximum');
+        columns.addColumn('number', 'Average');
+        columns.addColumn('boolean', 'Show');
 
-    function drawDashboard() {
-
-      var data = new google.visualization.DataTable();
-      data.addColumn('string', 'Task ID');
-      data.addColumn('string', 'Task Name');
-      data.addColumn('string', 'Resource');
-      data.addColumn('date', 'Start Date');
-      data.addColumn('date', 'End Date');
-      data.addColumn('number', 'Duration');
-      data.addColumn('number', 'Percent Complete');
-      data.addColumn('string', 'Dependencies');
-
-      data.addRows([
-		{{- range $process := .Processes -}}
-			{{$process}},
-	   	{{- end}}
-	  ]);
-
-	  var dashboard = new google.visualization.Dashboard(
-		document.getElementById('timeline_div'));
+        columns.addRows([
+        {{range $i, $column := .Columns -}}
+          ['{{$column.Name}}', {{$column.Minimum}}, {{$column.Maximum}}, {{$column.Average}}, true],
+        {{end}}
+        ]);
 
 
-	  var serverFilter = new google.visualization.ControlWrapper({
-		'controlType': 'CategoryFilter',
-		'containerId': 'serverfilter_div',
-		'options': {
-		  'filterColumnLabel': 'Resource',
-		  'ui': {label: 'Server', labelSeparator: ':'},
-		}
-	  });
+        var data = new google.visualization.DataTable();
+        data.addColumn('date', 'Date');
+        {{range $column := .Columns -}}
+        data.addColumn('number', '{{$column.Name}}');
+        {{end}}
+		    // [new Date(2314, 2, 16), 24045, 12374],
+        
+        data.addRows([
+			{{- range $index, $dataRow := .DataRows -}}
+			  {{- if (eq $index 0)}}
+           {{$dataRow}}
+        {{- else}}
+          ,{{$dataRow}}
+        {{- end}}
+			{{- end}}
+        ]);
 
-	  var trackHeight = 50;
-	  var ganttChart = new google.visualization.ChartWrapper({
-		'chartType': 'Gantt',
-		'containerId': 'gantt_div',
-		'dataTable': data,
-		'options': {
-			'title': 'Время жизни процессов',
-			'height': data.getNumberOfRows() * trackHeight + trackHeight,
-			'percentEnabled': false,
-		}
-	  });
+        table = new google.visualization.Table(document.getElementById('table_div'));
+        chart = new google.visualization.AnnotationChart(document.getElementById('chart_div'));
 
-	  dashboard.bind(serverFilter, ganttChart);
-	  dashboard.draw(data);
+        chart.draw(data, {displayAnnotations: true});
+        setColumnColors(columns);
+        drawTable(table, columns)
 
-	  google.visualization.events.addListener(ganttChart, 'select', selectHandler);
+        google.visualization.events.addListener(table, 'select', function() {
+          var row = table.getSelection()[0].row;
+          var value = columns.getValue(row, 4);
 
-	  function selectHandler(e) {
-		alert('A table row was selected');
-		var selection = ganttChart.getChart().getSelection();
-		var message = '';
-		for (var i = 0; i < selection.length; i++) {
-		  var item = selection[i];
-		  if (item.row != null && item.column != null) {
-			var str = data.getFormattedValue(item.row, item.column);
-			message += '{row:' + item.row + ',column:' + item.column + '} = ' + str + '\n';
-		  } else if (item.row != null) {
-			var str = data.getFormattedValue(item.row, 0);
-			message += '{row:' + item.row + ', column:none}; value (col 0) = ' + str + '\n';
-		  } else if (item.column != null) {
-			var str = data.getFormattedValue(0, item.column);
-			message += '{row:none, column:' + item.column + '}; value (row 0) = ' + str + '\n';
-		  }
-		}
-		if (message == '') {
-		  message = 'nothing';
-		}
-		alert('You selected ' + message);
-	  }
+          value = !value;
+          columns.setValue(row, 4, value);
+          if (value) {
+              chart.showDataColumns(row)
+          } else {
+              chart.hideDataColumns(row)
+          }
 
-	}
+          drawTable(table, columns);
+        });
 
+      }
+
+      function setColumnColors(table) {
+        var legends = document.getElementsByClassName("legend-dot");
+
+        for (let i = 0; i < legends.length; i++) {
+            table.setProperties(i, 0, {'style': 'color: ' + legends[i].style.backgroundColor +'; white-space: nowrap;'});
+            table.setProperties(i, 4, {'style': 'color: ' + legends[i].style.backgroundColor +';'});
+        }
+      }
+
+      function drawTable(table, data) {
+        table.draw(data, {showRowNumber: true, allowHtml: true, width: '100%', height: '100%'});
+      }
+
+      </script>
 	</script>
 </head>
 <body>
 	{{.DataFilter}}
 	{{.Navigation}}
-	<div id="timeline_div">
-		<div id="serverfilter_div"></div>
-  		<div id="gantt_div" style="width: 100%; height: calc(100% - 30px);">></div>
-	</div>
+
+	<div class="dropdown" style='height: 30px;'>
+      <span>{{.Title}}</span>
+      <div class="dropdown-content">
+        <div id='table_div'></div>
+      </div>
+    </div>
+
+    <div id='chart_div' style='width: 100%; height: calc(100% - 30px);'></div>
 </body>
 </html>
 `

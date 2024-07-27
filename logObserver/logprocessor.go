@@ -84,7 +84,7 @@ func (obj *processor) FlushAll() {
 		return
 	}
 
-	//obj.storage.SetIdByGroup("processesPerfomance", "processID", "process, pid")
+	//obj.storage.SetIdByGroup("processesPerformance", "processID", "process, pid")
 
 }
 
@@ -143,11 +143,10 @@ func getSimpleProperty(data string, name string) string {
 func getSubString(data string, start string, finish string) string {
 	var startPos, finishPos int
 
-
 	if startPos = strings.Index(data, start); startPos == -1 {
 		startPos = 0
 	} else {
-		startPos +=  len(start)
+		startPos += len(start)
 	}
 
 	finishPos = strings.Index(data[startPos:], finish)
@@ -155,7 +154,7 @@ func getSubString(data string, start string, finish string) string {
 		return data[startPos:]
 	}
 
-	return data[startPos:startPos+finishPos]
+	return data[startPos : startPos+finishPos]
 }
 
 func isIPAddress(data string) bool {

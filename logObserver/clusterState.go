@@ -157,7 +157,7 @@ func (obj *clusterState) agentStandardCall(data event) {
 		}
 	}
 
-	obj.storage.WriteRow("processesPerfomance", data.stopTime,
+	obj.storage.WriteRow("processesPerformance", data.stopTime,
 		process, pid, cpu, queue_length, queue_lengthByCpu,
 		memory_performance, disk_performance,
 		response_time, average_response_time)
@@ -165,7 +165,7 @@ func (obj *clusterState) agentStandardCall(data event) {
 
 func (obj *clusterState) agentStandardCallFinish() {
 
-	rows := obj.storage.SelectQuery("processesPerfomance", "process, pid")
+	rows := obj.storage.SelectQuery("processesPerformance", "process, pid")
 	for {
 		var serverName, pid string
 
@@ -187,7 +187,7 @@ func (obj *clusterState) agentStandardCallFinish() {
 
 	}
 	for _, process := range obj.processes {
-		obj.storage.Update("processesPerfomance", "processID", process.processID,
+		obj.storage.Update("processesPerformance", "processID", process.processID,
 			"process", "tcp://"+process.server+":"+process.port, "pid", process.pid)
 	}
 

@@ -33,7 +33,6 @@ const navagationTemplate = `
 		}
 		ul.nav a {
 			display: inline-block;
-			width: 5em;
 			padding: 5px;
 			background-color: #f4f4f4;
 			border: 1px dashed #333;
@@ -51,7 +50,7 @@ const navagationTemplate = `
 		<ul class="nav">
 			<li><a href="/">главная</a></li>
 			<li><a href="/processes">процессы</a></li>
-			<li><a href="/performance">производительность</a></li>
+		<!--	<li><a href="/performance">производительность</a></li> -->
 		</ul>
 	</nav>
 `

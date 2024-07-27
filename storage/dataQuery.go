@@ -3,6 +3,7 @@ package storage
 import (
 	"database/sql"
 	"fmt"
+	"strings"
 	"time"
 )
 
@@ -22,6 +23,7 @@ func (obj *Storage) SelectQuery(table string, columns string) interface {
 		From time.Time
 		To   time.Time
 	})
+	SetGroup(fields ...string)
 	Next(args ...any) bool
 } {
 	result := new(queryResult)
@@ -39,6 +41,10 @@ func (obj *queryResult) SetFilter(filter struct{ From, To time.Time }) {
 	obj.query = obj.query + " WHERE " + obj.data.metadata.GetFilterSQL(obj.table)
 	obj.args = append(obj.args, filter.From)
 	obj.args = append(obj.args, filter.To)
+}
+
+func (obj *queryResult) SetGroup(fields ...string) {
+	obj.query = obj.query + " GROUP BY " + strings.Join(fields, ", ")
 }
 
 func (obj *queryResult) Next(args ...any) (ok bool) {
