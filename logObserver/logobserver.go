@@ -17,11 +17,12 @@ type Storage interface {
 	WriteRow(table string, args ...any)
 	Update(table string, args ...any)
 	//	SetIdByGroup(table string, column, group string)
-	SelectQuery(table string, columns string) interface {
-		SetFilter(struct {
+	SelectQuery(table string, columns ...string) interface {
+		SetTimeFilter(struct {
 			From time.Time
 			To   time.Time
 		})
+		SetFilter(filter ...string)
 		SetGroup(fields ...string)
 		Next(args ...any) bool
 	}

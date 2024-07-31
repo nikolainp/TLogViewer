@@ -8,9 +8,10 @@ import (
 )
 
 type queryResult struct {
-	table string
-	query string
-	args  []any
+	table                    string
+	query                    string
+	queryWhere, queryGroupBy []string
+	args                     []any
 
 	isExecuted bool
 
@@ -18,11 +19,12 @@ type queryResult struct {
 	rows *sql.Rows
 }
 
-func (obj *Storage) SelectQuery(table string, columns string) interface {
-	SetFilter(struct {
+func (obj *Storage) SelectQuery(table string, columns ...string) interface {
+	SetTimeFilter(struct {
 		From time.Time
 		To   time.Time
 	})
+	SetFilter(filter ...string)
 	SetGroup(fields ...string)
 	Next(args ...any) bool
 } {
@@ -30,28 +32,49 @@ func (obj *Storage) SelectQuery(table string, columns string) interface {
 
 	result.data = obj
 	result.table = table
-	result.query = obj.metadata.SelectColumnsSQL(table, columns)
+	result.query = obj.metadata.SelectColumnsSQL(table, columns...)
 	result.args = make([]any, 0)
 
 	return result
 }
 
 // /////////////////////////////////////////////////////////////////////////////
-func (obj *queryResult) SetFilter(filter struct{ From, To time.Time }) {
-	obj.query = obj.query + " WHERE " + obj.data.metadata.GetFilterSQL(obj.table)
+func (obj *queryResult) SetTimeFilter(filter struct{ From, To time.Time }) {
+	obj.queryWhere = append(obj.queryWhere, obj.data.metadata.GetFilterSQL(obj.table))
 	obj.args = append(obj.args, filter.From)
 	obj.args = append(obj.args, filter.To)
 }
+func (obj *queryResult) SetFilter(filter ...string) {
+	if len(filter) != 0 {
+		obj.queryWhere = append(obj.queryWhere, filter[0])
+	}
+	if len(filter) == 2 {
+		obj.args = append(obj.args, filter[1])
+	}
+}
 
 func (obj *queryResult) SetGroup(fields ...string) {
-	obj.query = obj.query + " GROUP BY " + strings.Join(fields, ", ")
+	obj.queryGroupBy = append(obj.queryGroupBy, strings.Join(fields, ", "))
 }
 
 func (obj *queryResult) Next(args ...any) (ok bool) {
 	var err error
 
+	makeQuery := func() string {
+		query := obj.query
+		if len(obj.queryWhere) != 0 {
+			query = query + " WHERE " + strings.Join(obj.queryWhere, " AND ")
+		}
+		if len(obj.queryGroupBy) != 0 {
+			query = query + " GROUP BY " + strings.Join(obj.queryGroupBy, ", ")
+		}
+
+		return query
+	}
+
 	if !obj.isExecuted {
-		obj.rows, err = obj.data.db.Query(obj.query, obj.args...)
+		query := makeQuery()
+		obj.rows, err = obj.data.db.Query(query, obj.args...)
 		if err != nil {
 			panic(fmt.Errorf("\nquery: %s\nerror: %w", obj.query, err))
 		}

@@ -13,7 +13,7 @@ type metaData interface {
 	GetUpdateSQL(table string, fields ...any) string
 	//	SetIdByGroup(table string, column, group string) string
 
-	SelectColumnsSQL(table string, columns string) string
+	SelectColumnsSQL(table string, columns ...string) string
 	GetFilterSQL(table string) string
 }
 
@@ -80,7 +80,9 @@ func (obj *implMetaData) GetInsertValueSQL(table string) string {
 	return obj.tables[table].getInsertValueSQL()
 }
 
-func (obj *implMetaData) SelectColumnsSQL(table string, columns string) (query string) {
+func (obj *implMetaData) SelectColumnsSQL(table string, columns ...string) (query string) {
+
+	var queryColumns string
 
 	if len(columns) == 0 {
 		names := make([]string, 0, 10)
@@ -88,10 +90,12 @@ func (obj *implMetaData) SelectColumnsSQL(table string, columns string) (query s
 		for i := range metaColumns {
 			names = append(names, metaColumns[i].name)
 		}
-		columns = strings.Join(names, ", ")
+		queryColumns = strings.Join(names, ", ")
+	} else {
+		queryColumns = strings.Join(columns, ", ")
 	}
 
-	query = fmt.Sprintf("SELECT DISTINCT %s FROM %s", columns, table)
+	query = fmt.Sprintf("SELECT DISTINCT %s FROM %s", queryColumns, table)
 
 	return
 }

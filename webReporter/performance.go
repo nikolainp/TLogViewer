@@ -9,24 +9,7 @@ import (
 
 func (obj *WebReporter) performance(w http.ResponseWriter, req *http.Request) {
 
-	toDataRows := func(data []process) []string {
-
-		rows := make([]string, len(data))
-
-		for i := range data {
-			firstEventTime := obj.filter.getStartTime(data[i].FirstEventTime)
-			lastEventTime := obj.filter.getFinishTime(data[i].LastEventTime)
-
-			rows[i] = fmt.Sprintf("['%s', '%s', '%s', new Date(%s), new Date(%s), null, 100, null]",
-				data[i].Process,
-				template.JSEscapeString(data[i].Name),
-				data[i].Catalog,
-				firstEventTime.Format("2006, 01, 02, 15, 04, 05"),
-				lastEventTime.Format("2006, 01, 02, 15, 04, 05"))
-		}
-
-		return rows
-	}
+	processId := req.URL.Query().Get("processId")
 
 	dataGraph, err := template.New("performance").Parse(performanceTemplate)
 	checkErr(err)
@@ -35,12 +18,14 @@ func (obj *WebReporter) performance(w http.ResponseWriter, req *http.Request) {
 		Title      string
 		DataFilter string
 		Navigation string
-		Processes  []string
+		Columns    []dataColumn
+		DataRows   []string
 	}{
 		Title:      obj.title,
 		DataFilter: obj.filter.getContent(req.URL.String()),
 		Navigation: obj.navigator.getContent(),
-		Processes:  toDataRows(obj.getProcesses()),
+		Columns:    obj.getPerformanceStatistics(processId),
+		DataRows:   obj.getPerformance(processId),
 	}
 
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
@@ -49,46 +34,87 @@ func (obj *WebReporter) performance(w http.ResponseWriter, req *http.Request) {
 
 }
 
-type performance struct {
-	Name           string
-	Catalog        string
-	Process        string
-	ProcessID      string
-	ProcessType    string
-	Pid            string
-	Port           string
-	UID            string
-	ServerName     string
-	IP             string
-	FirstEventTime time.Time
-	LastEventTime  time.Time
+type dataColumn struct {
+	Name                      string
+	Minimum, Average, Maximum float64
 }
 
-func (obj *WebReporter) getPerformanceStatistics() {
-	details := obj.storage.SelectQuery("processesPerformance", "")
-	details.SetFilter(obj.filter.getData())
+func (obj *WebReporter) getPerformanceStatistics(processId string) (data []dataColumn) {
+
+	var processID string
+	var MIN_cpu, AVG_cpu, MAX_cpu float64
+	var MIN_queue_length, AVG_queue_length, MAX_queue_length float64
+	var MIN_queue_lengthByCpu, AVG_queue_lengthByCpu, MAX_queue_lengthByCpu float64
+	var MIN_memory_performance, AVG_memory_performance, MAX_memory_performance float64
+	var MIN_disk_performance, AVG_disk_performance, MAX_disk_performance float64
+	var MIN_response_time, AVG_response_time, MAX_response_time float64
+	var MIN_average_response_time, AVG_average_response_time, MAX_average_response_time float64
+
+	details := obj.storage.SelectQuery("processesPerformance", "processID",
+		"MIN(cpu)", "AVG(cpu)", "MAX(cpu)",
+		"MIN(queue_length)", "AVG(queue_length)", "MAX(queue_length)",
+		"MIN(queue_lengthByCpu)", "AVG(queue_lengthByCpu)", "MAX(queue_lengthByCpu)",
+		"MIN(memory_performance)", "AVG(memory_performance)", "MAX(memory_performance)",
+		"MIN(disk_performance)", "AVG(disk_performance)", "MAX(disk_performance)",
+		"MIN(response_time)", "AVG(response_time)", "MAX(response_time)",
+		"MIN(average_response_time)", "AVG(average_response_time)", "MAX(average_response_time)",
+	)
+	details.SetTimeFilter(obj.filter.getData())
+	details.SetFilter("processID = ?", processId)
 	details.SetGroup("processID")
-	for details.Next() {
+	details.Next(
+		&processID,
+		&MIN_cpu, &AVG_cpu, &MAX_cpu,
+		&MIN_queue_length, &AVG_queue_length, &MAX_queue_length,
+		&MIN_queue_lengthByCpu, &AVG_queue_lengthByCpu, &MAX_queue_lengthByCpu,
+		&MIN_memory_performance, &AVG_memory_performance, &MAX_memory_performance,
+		&MIN_disk_performance, &AVG_disk_performance, &MAX_disk_performance,
+		&MIN_response_time, &AVG_response_time, &MAX_response_time,
+		&MIN_average_response_time, &AVG_average_response_time, &MAX_average_response_time,
+	)
+	details.Next()
 
-	}
+	data = make([]dataColumn, 7)
+	data[0] = dataColumn{Name: "cpu", Minimum: MIN_cpu, Average: AVG_cpu, Maximum: MAX_cpu}
+	data[1] = dataColumn{Name: "queue_length", Minimum: MIN_queue_length, Average: AVG_queue_length, Maximum: MAX_queue_length}
+	data[2] = dataColumn{Name: "queue_lengthByCpu", Minimum: MIN_queue_lengthByCpu, Average: AVG_queue_lengthByCpu, Maximum: MAX_queue_lengthByCpu}
+	data[3] = dataColumn{Name: "memory_performance", Minimum: MIN_memory_performance, Average: AVG_memory_performance, Maximum: MAX_memory_performance}
+	data[4] = dataColumn{Name: "disk_performance", Minimum: MIN_disk_performance, Average: AVG_disk_performance, Maximum: MAX_disk_performance}
+	data[5] = dataColumn{Name: "response_time", Minimum: MIN_response_time, Average: AVG_response_time, Maximum: MAX_response_time}
+	data[6] = dataColumn{Name: "average_response_time", Minimum: MIN_average_response_time, Average: AVG_average_response_time, Maximum: MAX_average_response_time}
+
+	return
 }
 
-func (obj *WebReporter) getPerformance() (data []process) {
+func (obj *WebReporter) getPerformance(processId string) (data []string) {
 
-	var elem process
+	var eventTime string
+	var cpu, queue_length, queue_lengthByCpu float64
+	var memory_performance, disk_performance float64
+	var response_time, average_response_time float64
 
-	data = make([]process, 0)
+	data = make([]string, 0)
 
-	details := obj.storage.SelectQuery("processesPerformance", "")
-	details.SetFilter(obj.filter.getData())
-	for details.Next(
-		&elem.Name, &elem.Catalog, &elem.Process,
-		&elem.ProcessID, &elem.ProcessType,
-		&elem.Pid, &elem.Port, &elem.UID,
-		&elem.ServerName, &elem.IP,
-		&elem.FirstEventTime, &elem.LastEventTime) {
+	details := obj.storage.SelectQuery("processesPerformance", "eventTime",
+		"cpu", "queue_length", "queue_lengthByCpu",
+		"memory_performance", "disk_performance",
+		"response_time", "average_response_time")
+	details.SetTimeFilter(obj.filter.getData())
+	details.SetFilter("processID = ?", processId)
+	for details.Next(&eventTime,
+		&cpu, &queue_length, &queue_lengthByCpu,
+		&memory_performance, &disk_performance,
+		&response_time, &average_response_time) {
 
-		data = append(data, elem)
+		eventTTime, err := time.ParseInLocation("2006-01-02 15:04:05", eventTime[:19], time.Local)
+		checkErr(err)
+
+		data = append(data, fmt.Sprintf("[new Date(%s), %g, %g, %g, %g, %g, %g, %g]",
+			eventTTime.Format("2006, 01, 02, 15, 04, 05"),
+			cpu, queue_length, queue_lengthByCpu,
+			memory_performance, disk_performance,
+			response_time, average_response_time,
+		))
 	}
 
 	return
@@ -99,6 +125,28 @@ const performanceTemplate = `
 <head>
 
   <title>{{.Title}} | Performance</title>
+
+      <style>
+        .dropdown {
+          position: relative;
+          display: inline-block;
+        }
+        
+        .dropdown-content {
+          display: none;
+          position: absolute;
+          background-color: #f9f9f9;
+          min-width: 160px;
+          box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.2);
+          padding: 12px 16px;
+          z-index: 1;
+        }
+        
+        .dropdown:hover .dropdown-content {
+          display: block;
+        }
+    </style>
+
 
   <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
   <script type="text/javascript">

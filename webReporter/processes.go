@@ -70,8 +70,8 @@ func (obj *WebReporter) getProcesses() (data []process) {
 
 	data = make([]process, 0)
 
-	details := obj.storage.SelectQuery("processes", "")
-	details.SetFilter(obj.filter.getData())
+	details := obj.storage.SelectQuery("processes")
+	details.SetTimeFilter(obj.filter.getData())
 	for details.Next(
 		&elem.Name, &elem.Catalog, &elem.Process,
 		&elem.ProcessID, &elem.ProcessType,
@@ -157,7 +157,7 @@ const processesTemplate = `
 		if (item.row == null) {
 			return;
 		}
-		var str = data.getValue(item.row, 1);
+		var str = data.getValue(item.row, 0);
 		
 		location.replace('/performance?processId=' + str)
 	  }
