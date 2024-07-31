@@ -14,10 +14,13 @@ builds:
     binary: TLogViewer
     env:
       - CGO_ENABLED=1
+      - CC=gcc
     goos:
       - linux
       # - windows
       # - darwin
+    goarch:
+      - amd64
 
 archives:
   - format: tar.gz
