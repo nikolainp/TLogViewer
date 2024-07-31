@@ -11,6 +11,15 @@ func (obj *WebReporter) performance(w http.ResponseWriter, req *http.Request) {
 
 	processId := req.URL.Query().Get("processId")
 
+	toProcessDesc := func(data process) string {
+		return fmt.Sprintf("%s (%s, %s:%s, start: %s - stop: %s)",
+			data.Process,
+			data.Name, data.IP, data.Port,
+			data.FirstEventTime.Format("2006-01-02 15:04:05"),
+			data.LastEventTime.Format("2006-01-02 15:04:05"),
+		)
+	}
+
 	dataGraph, err := template.New("performance").Parse(performanceTemplate)
 	checkErr(err)
 
@@ -18,12 +27,14 @@ func (obj *WebReporter) performance(w http.ResponseWriter, req *http.Request) {
 		Title      string
 		DataFilter string
 		Navigation string
+		Process    string
 		Columns    []dataColumn
 		DataRows   []string
 	}{
 		Title:      obj.title,
 		DataFilter: obj.filter.getContent(req.URL.String()),
 		Navigation: obj.navigator.getContent(),
+		Process:    toProcessDesc(obj.getProcess(processId)),
 		Columns:    obj.getPerformanceStatistics(processId),
 		DataRows:   obj.getPerformance(processId),
 	}
@@ -37,6 +48,22 @@ func (obj *WebReporter) performance(w http.ResponseWriter, req *http.Request) {
 type dataColumn struct {
 	Name                      string
 	Minimum, Average, Maximum float64
+}
+
+func (obj *WebReporter) getProcess(processId string) (data process) {
+
+	details := obj.storage.SelectQuery("processes")
+	details.SetTimeFilter(obj.filter.getData())
+	details.SetFilter("processID = ?", processId)
+	details.Next(
+		&data.Name, &data.Catalog, &data.Process,
+		&data.ProcessID, &data.ProcessType,
+		&data.Pid, &data.Port, &data.UID,
+		&data.ServerName, &data.IP,
+		&data.FirstEventTime, &data.LastEventTime)
+	details.Next()
+
+	return
 }
 
 func (obj *WebReporter) getPerformanceStatistics(processId string) (data []dataColumn) {
@@ -232,7 +259,7 @@ const performanceTemplate = `
 	{{.Navigation}}
 
 	<div class="dropdown" style='height: 30px;'>
-      <span>{{.Title}}</span>
+      <span>{{.Process}}</span>
       <div class="dropdown-content">
         <div id='table_div'></div>
       </div>
