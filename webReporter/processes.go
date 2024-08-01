@@ -157,7 +157,7 @@ const processesTemplate = `
 		if (item.row == null) {
 			return;
 		}
-		var str = data.getValue(item.row, 0);
+		var str = ganttChart.getDataTable().getValue(item.row, 0);
 		
 		location.replace('/performance?processId=' + str)
 	  }
