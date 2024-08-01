@@ -15,6 +15,7 @@ builds:
     env:
       - CGO_ENABLED=1
       - CC=gcc
+      - CGO_LDFLAGS=-static
     goos:
       - linux
       # - windows
