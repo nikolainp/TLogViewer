@@ -11,7 +11,7 @@ on:
 
 jobs:
   goreleaser:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-20.04
     steps:
       -
         name: Checkout
@@ -24,7 +24,7 @@ jobs:
         with:
           go-version: '1.21'
       -
-        name: setup release environment
+        name: Setup release environment
         run: sudo apt-get -y install gcc
       -
         name: Run GoReleaser
