@@ -140,6 +140,27 @@ func getSimpleProperty(data string, name string) string {
 	return data[start : start+length]
 }
 
+func getComplexProperty(data string, name string) string {
+	start := strings.Index(data, name)
+	if start == -1 {
+		return ""
+	}
+	start += len(name)
+	terminator := data[start]
+
+	if terminator == '\'' || terminator == '"' {
+		start++
+	} else {
+		terminator = ','
+	}
+
+	length := strings.Index(data[start:], string(terminator))
+	if length == -1 {
+		return data[start:]
+	}
+	return data[start : start+length]
+}
+
 func getSubString(data string, start string, finish string) string {
 	var startPos, finishPos int
 

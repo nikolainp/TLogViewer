@@ -163,6 +163,11 @@ func (obj *implMetaData) init() {
 				{name: "average_response_time", datatype: "REAL"},
 			},
 		},
+		"serverContexts": {name: "serverСontexts",
+			columns: []metaColumn{
+				{name: "processID", datatype: "NUMBER"},
+			},
+		},
 	}
 
 	for tableName, table := range obj.tables {
