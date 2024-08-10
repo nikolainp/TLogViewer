@@ -1,6 +1,7 @@
 package logobserver
 
 import (
+	"fmt"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -10,14 +11,14 @@ import (
 type clusterState struct {
 	processes  map[string]*clusterProcess
 	curProcess *clusterProcess
-	processID  map[string]int
+	// processID  map[string]int
 
 	storage Storage
 }
 
 func (obj *clusterState) init(storage Storage) {
 	obj.processes = make(map[string]*clusterProcess)
-	obj.processID = make(map[string]int)
+	// obj.processID = make(map[string]int)
 
 	obj.storage = storage
 }
@@ -206,6 +207,8 @@ type clusterProcess struct {
 	server      string
 	ip          map[string]bool
 
+	contexts map[string]*serverContext
+
 	firstEventTime time.Time
 	lastEventTime  time.Time
 }
@@ -220,6 +223,8 @@ func newClusterProcess(data event) *clusterProcess {
 	obj.pid = getSimpleProperty(obj.process, "_")
 
 	obj.ip = make(map[string]bool)
+
+	obj.contexts = make(map[string]*serverContext)
 
 	obj.firstEventTime = data.stopTime
 	obj.lastEventTime = data.stopTime
@@ -276,4 +281,69 @@ func (obj *clusterProcess) addEvent(data event) {
 			}
 		}
 	}
+	// server context
+	{
+		isTrueEvent := func(data event) bool {
+			return data.eventType == "SCOM"
+		}
+
+		// 45:01.730000-0,SCOM,2,process=rphost,OSThread=1960,t:clientID=115,t:applicationName=JobScheduler,Func='new ServerProcessData(20a67c5cb40,,)'
+		// 45:01.730002-0,SCOM,3,process=rphost,OSThread=1960,t:clientID=115,t:applicationName=JobScheduler,Func='setSrcProcessName(20a67c5cb40,IBName,IBName)'
+		// 50:02.234010-300504009,SCOM,2,process=rphost,OSThread=1960,t:clientID=115,t:applicationName=JobScheduler,ProcessName=IBName,SrcProcessName=IBName,Func='delete ServerProcessData(20a67c5cb40,IBName,IBName)'
+
+		// 19:00.478000-0,SCOM,2,process=rphost,OSThread=2292,t:clientID=55,Func='new ServerProcessData(222e2279ec0,,)'
+		// 19:00.478002-0,SCOM,3,process=rphost,OSThread=2292,t:clientID=55,Func='setSrcProcessName(222e2279ec0,IBName,IBName)'
+		// 19:05.135006-0,SCOM,3,process=rphost,p:processName=IBName,p:processName=IBName2d006f19-1b79-4dfa-a087-c888c028c120,OSThread=2292,t:clientID=55,t:applicationName=BackgroundJob,t:computerName=computerName,t:connectID=1,Func='changeServerContextName(222e2279ec0,IBName,IBName2d006f19-1b79-4dfa-a087-c888c028c120)->success'
+		// 19:05.260001-4782000,SCOM,2,process=rphost,OSThread=2292,t:clientID=55,ProcessName=IBName,SrcProcessName=IBName,ProcessName=IBName2d006f19-1b79-4dfa-a087-c888c028c120,Func='delete ServerProcessData(222e2279ec0,IBName,IBName2d006f19-1b79-4dfa-a087-c888c028c120)'
+
+		if isTrueEvent(data) {
+			funcValue := getComplexProperty(data.eventData, ",Func=")
+			name := getSubString(funcValue, "'", "(")
+			value := strings.Split(getSubString(funcValue, "(", ")"), ",")
+
+			switch name {
+			case "new ServerProcessData":
+			case "setSrcProcessName":
+				obj.contexts[value[0]] = &serverContext{
+					id: value[0], name: value[1],
+					createTime: data.stopTime,
+				}
+			case "changeServerContextName":
+				if context, ok := obj.contexts[value[0]]; ok {
+					context.renameTime = data.stopTime
+				} else {
+					obj.contexts[value[0]] = &serverContext{
+						id: value[0], name: value[1],
+						renameTime: data.stopTime,
+					}
+				}
+			case "delete ServerProcessData":
+				if context, ok := obj.contexts[value[0]]; ok {
+					context.renameTime = data.stopTime
+				} else {
+					obj.contexts[value[0]] = &serverContext{
+						id: value[0], name: value[1],
+						createTime: data.startTime,
+						deleteTime: data.stopTime,
+					}
+				}
+			default:
+				fmt.Printf("func = %s", name)
+			}
+			// if isIPAddress(address) {
+			// 	if strings.Compare(address, "[::1]") != 0 &&
+			// 		strings.Compare(address, "127.0.0.1") != 0 {
+			// 		obj.ip[address] = true
+			// 	}
+			// }
+		}
+
+	}
+}
+
+///////////////////////////////////////////////////////////////////////////////
+
+type serverContext struct {
+	id, name                           string
+	createTime, renameTime, deleteTime time.Time
 }
