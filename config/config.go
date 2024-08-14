@@ -48,8 +48,8 @@ func New(args []string) (obj Config, err error) {
 		return
 	}
 
-	obj.DataPath = filepath.Clean(fs.Arg(0))
-	obj.StoragePath = obj.DataPath + "Report.sqlite"
+	obj.DataPath, _ = filepath.Abs(fs.Arg(0))
+	obj.StoragePath = obj.DataPath + ".report.sqlite"
 
 	return
 }

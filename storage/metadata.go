@@ -166,6 +166,10 @@ func (obj *implMetaData) init() {
 		"serverContexts": {name: "serverСontexts",
 			columns: []metaColumn{
 				{name: "processID", datatype: "NUMBER"},
+				{name: "contextID", datatype: "TEXT"}, {name: "name", datatype: "TEXT"},
+				{name: "createTime", datatype: "DATETIME", isTimeFrom: true},
+				{name: "renameTime", datatype: "DATETIME", isTimeTo: true},
+				{name: "deleteTime", datatype: "DATETIME"},
 			},
 		},
 	}

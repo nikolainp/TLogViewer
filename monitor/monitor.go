@@ -136,7 +136,8 @@ func (obj *Monitor) print() {
 		fmt.Fprintf(os.Stderr,
 			obj.fmtShowProgress,
 			obj.partsFinished, obj.partsTotal,
-			byteCount(obj.sizeFinished), byteCount(obj.sizeTotal), totalDuration,
+			byteCount(obj.sizeFinished), byteCount(obj.sizeTotal),
+			totalDuration.Truncate(time.Second),
 			byteCount(speed), byteCount(totalSpeed))
 	}
 

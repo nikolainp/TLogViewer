@@ -88,6 +88,14 @@ func (obj *clusterState) flushAll() error {
 			process.server, mapToString(process.ip),
 			process.firstEventTime, process.lastEventTime,
 		)
+
+		for _, context := range process.contexts {
+			obj.storage.WriteRow("serverContexts",
+				process.processID,
+				context.id, context.name,
+				context.createTime, context.renameTime, context.deleteTime,
+			)
+		}
 	}
 	return nil
 }
