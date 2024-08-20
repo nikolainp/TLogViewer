@@ -8,9 +8,9 @@ import (
 type navigation struct {
 }
 
-func (obj *navigation) getContent() string {
+func (obj *navigation) getMainMenu() string {
 	w := new(strings.Builder)
-	sample, err := template.New("navigation").Parse(navagationTemplate)
+	sample, err := template.New("navigation").Parse(navigationMainMenuTemplate)
 	checkErr(err)
 
 	data := struct{}{}
@@ -21,36 +21,13 @@ func (obj *navigation) getContent() string {
 	return w.String()
 }
 
-const navagationTemplate = `
-	<style  type="text/css">
-		ul.nav{
-			margin-left: 0px;
-			padding-left: 0px;
-			list-style: none;
-		}
-		.nav li { 
-			display: inline; 
-		}
-		ul.nav a {
-			display: inline-block;
-			padding: 5px;
-			background-color: #f4f4f4;
-			border: 1px dashed #333;
-			text-decoration: none;
-			color: #333;
-			text-align: center;
-		}
-		ul.nav a:hover{
-			background-color: #333;
-			color: #f4f4f4;
-		}
-	</style>
+const navigationMainMenuTemplate = `
 
 	<nav class="menu">	
 		<ul class="nav">
 			<li><a href="/">главная</a></li>
 			<li><a href="/processes">процессы</a></li>
-		<!--	<li><a href="/performance">производительность</a></li> -->
+			<li><a href="/performance">производительность</a></li> 
 		</ul>
 	</nav>
 `

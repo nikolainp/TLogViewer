@@ -53,6 +53,7 @@ func (obj *WebReporter) getHandlers() *http.ServeMux {
 
 	sm.HandleFunc("/datafilter", obj.filter.setContext)
 
+	sm.HandleFunc("/static/{id}", obj.static)
 	sm.HandleFunc("/headers", obj.headers)
 
 	return sm

@@ -39,7 +39,7 @@ func (obj *WebReporter) processes(w http.ResponseWriter, req *http.Request) {
 	}{
 		Title:      obj.title,
 		DataFilter: obj.filter.getContent(req.URL.String()),
-		Navigation: obj.navigator.getContent(),
+		Navigation: obj.navigator.getMainMenu(),
 		Processes:  toDataRows(obj.getProcesses()),
 	}
 

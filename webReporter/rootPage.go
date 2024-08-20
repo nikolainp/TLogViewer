@@ -48,7 +48,7 @@ func (obj *WebReporter) rootPage(w http.ResponseWriter, req *http.Request) {
 		FirstEventTime:  details.FirstEventTime.Format("2006-01-02 15:04:05"),
 		LastEventTime:   details.LastEventTime.Format("2006-01-02 15:04:05"),
 		DataFilter:      obj.filter.getContent(req.URL.String()),
-		Navigation:      obj.navigator.getContent(),
+		Navigation:      obj.navigator.getMainMenu(),
 		Processes:       toDataRows(obj.getProcesses()),
 	}
 
@@ -86,7 +86,7 @@ const rootPageTemplate = `
 
   <title>{{.Title}}</title>
 
-
+  <link rel="stylesheet" href="/static/style.css">
   <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
   <script type="text/javascript">
 

@@ -9,7 +9,19 @@ import (
 
 func (obj *WebReporter) performance(w http.ResponseWriter, req *http.Request) {
 
-	processId := req.URL.Query().Get("processId")
+	urlQuery := req.URL.Query()
+
+	data := struct {
+		Title      string
+		DataFilter string
+		Navigation string
+
+		ProcessList string
+
+		Process  string
+		Columns  []dataColumn
+		DataRows []string
+	}{}
 
 	toProcessDesc := func(data process) string {
 		return fmt.Sprintf("%s (%s, %s:%s, start: %s - stop: %s)",
@@ -23,26 +35,27 @@ func (obj *WebReporter) performance(w http.ResponseWriter, req *http.Request) {
 	dataGraph, err := template.New("performance").Parse(performanceTemplate)
 	checkErr(err)
 
-	data := struct {
-		Title      string
-		DataFilter string
-		Navigation string
-		Process    string
-		Columns    []dataColumn
-		DataRows   []string
-	}{
-		Title:      obj.title,
-		DataFilter: obj.filter.getContent(req.URL.String()),
-		Navigation: obj.navigator.getContent(),
-		Process:    toProcessDesc(obj.getProcess(processId)),
-		Columns:    obj.getPerformanceStatistics(processId),
-		DataRows:   obj.getPerformance(processId),
+	data.Title = obj.title
+	data.DataFilter = obj.filter.getContent(req.URL.String())
+	data.Navigation = obj.navigator.getMainMenu()
+	//data.ProcessList = obj.getRphosts()
+
+	if !urlQuery.Has("processId") {
+		// total data
+
+	} else {
+		// by process
+
+		processId := req.URL.Query().Get("processId")
+
+		data.Process = toProcessDesc(obj.getProcess(processId))
+		data.Columns = obj.getPerformanceStatistics(processId)
+		data.DataRows = obj.getPerformance(processId)
 	}
 
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	err = dataGraph.Execute(w, data)
 	checkErr(err)
-
 }
 
 type dataColumn struct {
@@ -257,6 +270,8 @@ const performanceTemplate = `
 <body>
 	{{.DataFilter}}
 	{{.Navigation}}
+
+	<div style='display: inline'>process list</div>
 
 	<div class="dropdown" style='height: 30px;'>
       <span>{{.Process}}</span>
