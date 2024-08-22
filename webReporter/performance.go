@@ -3,13 +3,14 @@ package webreporter
 import (
 	"fmt"
 	"net/http"
+	"strings"
 	"text/template"
 	"time"
 )
 
 func (obj *WebReporter) performance(w http.ResponseWriter, req *http.Request) {
 
-	urlQuery := req.URL.Query()
+	urlString := "/performance"
 
 	data := struct {
 		Title      string
@@ -23,6 +24,17 @@ func (obj *WebReporter) performance(w http.ResponseWriter, req *http.Request) {
 		DataRows []string
 	}{}
 
+	toProcessList := func(data []process) (res map[string]string) {
+		res = make(map[string]string)
+		res[""] = "Все"
+		for i := range data {
+			if !strings.HasPrefix(data[i].Process, "rphost") {
+				continue
+			}
+			res[data[i].ProcessID] = data[i].Name
+		}
+		return
+	}
 	toProcessDesc := func(data process) string {
 		return fmt.Sprintf("%s (%s, %s:%s, start: %s - stop: %s)",
 			data.Process,
@@ -38,15 +50,14 @@ func (obj *WebReporter) performance(w http.ResponseWriter, req *http.Request) {
 	data.Title = obj.title
 	data.DataFilter = obj.filter.getContent(req.URL.String())
 	data.Navigation = obj.navigator.getMainMenu()
-	//data.ProcessList = obj.getRphosts()
+	data.ProcessList = obj.navigator.getSubMenu(urlString, toProcessList(obj.getProcesses()))
 
-	if !urlQuery.Has("processId") {
+	processId := req.PathValue("id")
+	if processId == "" {
 		// total data
 
 	} else {
 		// by process
-
-		processId := req.URL.Query().Get("processId")
 
 		data.Process = toProcessDesc(obj.getProcess(processId))
 		data.Columns = obj.getPerformanceStatistics(processId)
@@ -166,28 +177,7 @@ const performanceTemplate = `
 
   <title>{{.Title}} | Performance</title>
 
-      <style>
-        .dropdown {
-          position: relative;
-          display: inline-block;
-        }
-        
-        .dropdown-content {
-          display: none;
-          position: absolute;
-          background-color: #f9f9f9;
-          min-width: 160px;
-          box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.2);
-          padding: 12px 16px;
-          z-index: 1;
-        }
-        
-        .dropdown:hover .dropdown-content {
-          display: block;
-        }
-    </style>
-
-
+  <link rel="stylesheet" href="/static/style.css">
   <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
   <script type="text/javascript">
       google.charts.load('current', {'packages':['annotationchart']});
@@ -271,16 +261,22 @@ const performanceTemplate = `
 	{{.DataFilter}}
 	{{.Navigation}}
 
-	<div style='display: inline'>process list</div>
+	<div style="width: 100%; height: 100%; display: table;">
+    	<div style="display: table-row;">
+        	<div style="display: table-cell;">{{.ProcessList}}</div>
+        	<div style="display: table-cell;">
+				<div class="dropdown" style='height: 30px;'>
+				<span>{{.Process}}</span>
+				<div class="dropdown-content">
+					<div id='table_div'></div>
+				</div>
+				</div>
 
-	<div class="dropdown" style='height: 30px;'>
-      <span>{{.Process}}</span>
-      <div class="dropdown-content">
-        <div id='table_div'></div>
-      </div>
-    </div>
-
-    <div id='chart_div' style='width: 100%; height: calc(100% - 30px);'></div>
+				<div id='chart_div' style='width: 100%; height: calc(100% - 50px);'></div>
+			</div>
+    	</div>
+	</div>
+	
 </body>
 </html>
 `

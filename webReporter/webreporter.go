@@ -50,6 +50,7 @@ func (obj *WebReporter) getHandlers() *http.ServeMux {
 	sm.HandleFunc("/", obj.rootPage)
 	sm.HandleFunc("/processes", obj.processes)
 	sm.HandleFunc("/performance", obj.performance)
+	sm.HandleFunc("/performance/{id}", obj.performance)
 
 	sm.HandleFunc("/datafilter", obj.filter.setContext)
 
