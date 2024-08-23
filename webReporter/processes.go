@@ -91,6 +91,7 @@ const processesTemplate = `
 
   <title>{{.Title}} | Processes</title>
 
+  <link rel="stylesheet" href="/static/style.css">
   <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
   <script type="text/javascript">
 
@@ -159,7 +160,7 @@ const processesTemplate = `
 		}
 		var str = ganttChart.getDataTable().getValue(item.row, 0);
 		
-		location.replace('/performance?processId=' + str)
+		location.replace('/performance/' + str)
 	  }
 
 	}
