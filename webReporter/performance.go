@@ -24,14 +24,14 @@ func (obj *WebReporter) performance(w http.ResponseWriter, req *http.Request) {
 		DataRows []string
 	}{}
 
-	toProcessList := func(data []process) (res map[string]string) {
+	toProcessList := func(data map[string]process) (res map[string]string) {
 		res = make(map[string]string)
 		res[""] = "Все"
 		for i := range data {
 			if !strings.HasPrefix(data[i].Process, "rphost") {
 				continue
 			}
-			res[data[i].ProcessID] = data[i].Name
+			res[i] = data[i].Name
 		}
 		return
 	}
@@ -47,21 +47,37 @@ func (obj *WebReporter) performance(w http.ResponseWriter, req *http.Request) {
 	dataGraph, err := template.New("performance").Parse(performanceTemplate)
 	checkErr(err)
 
+	processList := obj.getProcesses()
 	data.Title = obj.title
 	data.DataFilter = obj.filter.getContent(req.URL.String())
 	data.Navigation = obj.navigator.getMainMenu()
-	data.ProcessList = obj.navigator.getSubMenu(urlString, toProcessList(obj.getProcesses()))
+	data.ProcessList = obj.navigator.getSubMenu(urlString, toProcessList(processList))
 
 	processId := req.PathValue("id")
 	if processId == "" {
 		// total data
 
+		totalProcessList := make(map[string]process)
+		orderID := 0
+		for i, v := range processList {
+			if !strings.HasPrefix(v.Process, "rphost") {
+				continue
+			}
+			v.order = orderID
+			totalProcessList[i] = v
+			orderID++
+		}
+
+		data.Process = "Производительность рабочих процессов"
+		data.Columns = obj.getPerformanceStatistics(totalProcessList)
+		data.DataRows = obj.getPerformance(totalProcessList)
+
 	} else {
 		// by process
 
 		data.Process = toProcessDesc(obj.getProcess(processId))
-		data.Columns = obj.getPerformanceStatistics(processId)
-		data.DataRows = obj.getPerformance(processId)
+		data.Columns = obj.getProcessPerformanceStatistics(processId)
+		data.DataRows = obj.getProcessPerformance(processId)
 	}
 
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
@@ -90,7 +106,82 @@ func (obj *WebReporter) getProcess(processId string) (data process) {
 	return
 }
 
-func (obj *WebReporter) getPerformanceStatistics(processId string) (data []dataColumn) {
+func (obj *WebReporter) getPerformanceStatistics(processes map[string]process) (data []dataColumn) {
+
+	var processID string
+	var MIN_average_response_time, AVG_average_response_time, MAX_average_response_time float64
+
+	details := obj.storage.SelectQuery("processesPerformance", "processID",
+		"MIN(average_response_time)", "AVG(average_response_time)", "MAX(average_response_time)",
+	)
+	details.SetTimeFilter(obj.filter.getData())
+	details.SetGroup("processID")
+	details.SetOrder("processID")
+
+	data = make([]dataColumn, len(processes))
+	for details.Next(
+		&processID,
+		&MIN_average_response_time, &AVG_average_response_time, &MAX_average_response_time,
+	) {
+		if _, ok := processes[processID]; !ok {
+			continue
+		}
+
+		data[processes[processID].order] =
+			dataColumn{
+				Name:    processes[processID].Name,
+				Minimum: 10000 / MIN_average_response_time,
+				Average: 10000 / AVG_average_response_time,
+				Maximum: 10000 / MAX_average_response_time,
+			}
+	}
+
+	return
+}
+
+func (obj *WebReporter) getPerformance(processes map[string]process) (data []string) {
+
+	var eventTime string
+	var processID string
+	var average_response_time float64
+
+	data = make([]string, 0)
+
+	details := obj.storage.SelectQuery("processesPerformance", "eventTime",
+		"ProcessID", "average_response_time")
+	details.SetTimeFilter(obj.filter.getData())
+	details.SetOrder("eventTime", "ProcessID")
+
+	curData := make([]string, len(processes))
+	for i := range curData {
+		curData[i] = "null"
+	}
+	addData := func() {
+	}
+
+	for details.Next(&eventTime,
+		&processID, &average_response_time) {
+
+		if _, ok := processes[processID]; !ok {
+			continue
+		}
+
+		eventTTime, err := time.ParseInLocation("2006-01-02 15:04:05", eventTime[:19], time.Local)
+		checkErr(err)
+
+		curData[processes[processID].order] = fmt.Sprintf("%g", 10000/average_response_time)
+		data = append(data, fmt.Sprintf("[new Date(%s), %s]",
+			eventTTime.Format("2006, 01, 02, 15, 04, 05"),
+			strings.Join(curData, ","),
+		))
+		curData[processes[processID].order] = "null"
+	}
+	addData()
+
+	return
+}
+
+func (obj *WebReporter) getProcessPerformanceStatistics(processId string) (data []dataColumn) {
 
 	var processID string
 	var MIN_cpu, AVG_cpu, MAX_cpu float64
@@ -137,7 +228,7 @@ func (obj *WebReporter) getPerformanceStatistics(processId string) (data []dataC
 	return
 }
 
-func (obj *WebReporter) getPerformance(processId string) (data []string) {
+func (obj *WebReporter) getProcessPerformance(processId string) (data []string) {
 
 	var eventTime string
 	var cpu, queue_length, queue_lengthByCpu float64
@@ -220,7 +311,7 @@ const performanceTemplate = `
         table = new google.visualization.Table(document.getElementById('table_div'));
         chart = new google.visualization.AnnotationChart(document.getElementById('chart_div'));
 
-        chart.draw(data, {displayAnnotations: true});
+        chart.draw(data, {displayAnnotations: true, interpolateNulls: true, thickness: 5});
         setColumnColors(columns);
         drawTable(table, columns)
 
@@ -266,10 +357,10 @@ const performanceTemplate = `
         	<div style="display: table-cell;">{{.ProcessList}}</div>
         	<div style="display: table-cell;">
 				<div class="dropdown" style='height: 30px;'>
-				<span>{{.Process}}</span>
-				<div class="dropdown-content">
-					<div id='table_div'></div>
-				</div>
+					<span>{{.Process}}</span>
+					<div class="dropdown-content">
+						<div id='table_div'></div>
+					</div>
 				</div>
 
 				<div id='chart_div' style='width: 100%; height: calc(100% - 50px);'></div>

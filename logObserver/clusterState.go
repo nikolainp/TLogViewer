@@ -137,32 +137,26 @@ func (obj *clusterState) agentStandardCall(data event) {
 	dataFields := strings.Split(dataStr, ",")
 	for _, field := range dataFields {
 		subFields := strings.Split(field, "=")
-		if subFields[0] == "process" {
+		switch subFields[0] {
+		case "process":
 			process = subFields[1]
-		}
-		if subFields[0] == "pid" {
+		case "pid":
 			pid = subFields[1]
-		}
-		if subFields[0] == "cpu" {
+		case "cpu":
 			cpu = parseInt(subFields[1])
-		}
-		if subFields[0] == "queue_length" {
+		case "queue_length":
 			queue_length = parseInt(subFields[1])
-		}
-		if subFields[0] == "queue_length/cpu_num" {
+		case "queue_length/cpu_num":
 			queue_lengthByCpu = parseInt(subFields[1])
-		}
-		if subFields[0] == "memory_performance" {
+		case "memory_performance":
 			memory_performance = parseInt(subFields[1])
-		}
-		if subFields[0] == "disk_performance" {
+		case "disk_performance":
 			disk_performance = parseInt(subFields[1])
-		}
-		if subFields[0] == "response_time" {
+		case "response_time":
 			response_time = parseInt(subFields[1])
-		}
-		if subFields[0] == "average_response_time" {
-			average_response_time = parseFloat(subFields[1])
+		case "average_response_time":
+			average_response_time = parseFloat(
+				strings.Trim(subFields[1], "'\r\n"))
 		}
 	}
 

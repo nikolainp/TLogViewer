@@ -66,7 +66,12 @@ const navigationSubMenuTemplate = `
 		<ul class="nav" style="display: inline-grid;">
 		{{ range $index, $item := .MenuItems }}
 			<li><a style="width: 150px; overflow-wrap: anywhere;" 
-				href="{{$url}}/{{$index}}">{{$item}}</a></li>
+				{{ if (eq $index "") }}
+				href="{{$url}}">{{$item}}
+				{{ else }}
+				href="{{$url}}/{{$index}}">{{$item}}
+				{{ end }}
+				</a></li>
 		{{end}}
 		</ul>
 	</nav>

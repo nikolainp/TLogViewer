@@ -24,6 +24,7 @@ type Storage interface {
 		})
 		SetFilter(filter ...string)
 		SetGroup(fields ...string)
+		SetOrder(fields ...string)
 		Next(args ...any) bool
 	}
 }

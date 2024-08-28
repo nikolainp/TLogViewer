@@ -9,20 +9,21 @@ import (
 
 func (obj *WebReporter) processes(w http.ResponseWriter, req *http.Request) {
 
-	toDataRows := func(data []process) []string {
+	toDataRows := func(data map[string]process) []string {
 
-		rows := make([]string, len(data))
+		rows := make([]string, 0, len(data))
 
 		for i := range data {
 			firstEventTime := obj.filter.getStartTime(data[i].FirstEventTime)
 			lastEventTime := obj.filter.getFinishTime(data[i].LastEventTime)
 
-			rows[i] = fmt.Sprintf("['%s', '%s', '%s', new Date(%s), new Date(%s), null, 100, null]",
+			rows = append(rows, fmt.Sprintf("['%s', '%s', '%s', new Date(%s), new Date(%s), null, 100, null]",
 				data[i].ProcessID,
 				template.JSEscapeString(data[i].Name),
 				data[i].Catalog,
 				firstEventTime.Format("2006, 01, 02, 15, 04, 05"),
-				lastEventTime.Format("2006, 01, 02, 15, 04, 05"))
+				lastEventTime.Format("2006, 01, 02, 15, 04, 05"),
+			))
 		}
 
 		return rows
@@ -62,16 +63,21 @@ type process struct {
 	IP             string
 	FirstEventTime time.Time
 	LastEventTime  time.Time
+
+	order int
 }
 
-func (obj *WebReporter) getProcesses() (data []process) {
+func (obj *WebReporter) getProcesses() (data map[string]process) {
 
 	var elem process
 
-	data = make([]process, 0)
+	data = make(map[string]process, 0)
 
 	details := obj.storage.SelectQuery("processes")
 	details.SetTimeFilter(obj.filter.getData())
+	details.SetOrder("Name")
+
+	orderID := 0
 	for details.Next(
 		&elem.Name, &elem.Catalog, &elem.Process,
 		&elem.ProcessID, &elem.ProcessType,
@@ -79,7 +85,10 @@ func (obj *WebReporter) getProcesses() (data []process) {
 		&elem.ServerName, &elem.IP,
 		&elem.FirstEventTime, &elem.LastEventTime) {
 
-		data = append(data, elem)
+		elem.order = orderID
+		elem.Name = template.JSEscapeString(elem.Name)
+		data[elem.ProcessID] = elem
+		orderID++
 	}
 
 	return

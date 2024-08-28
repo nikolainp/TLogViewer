@@ -9,18 +9,19 @@ import (
 
 func (obj *WebReporter) rootPage(w http.ResponseWriter, req *http.Request) {
 
-	toDataRows := func(data []process) []string {
+	toDataRows := func(data map[string]process) []string {
 
-		rows := make([]string, len(data))
+		rows := make([]string, 0, len(data))
 
 		for i := range data {
-			rows[i] = fmt.Sprintf("['%s', '%s', '%s', '%s', new Date(%s), new Date(%s)]",
-				template.JSEscapeString(data[i].Name),
+			rows = append(rows, fmt.Sprintf("['%s', '%s', '%s', '%s', new Date(%s), new Date(%s)]",
+				data[i].Name,
 				data[i].ServerName,
 				data[i].IP,
 				data[i].Port,
 				data[i].FirstEventTime.Format("2006, 01, 02, 15, 04, 05"),
-				data[i].LastEventTime.Format("2006, 01, 02, 15, 04, 05"))
+				data[i].LastEventTime.Format("2006, 01, 02, 15, 04, 05"),
+			))
 		}
 
 		return rows

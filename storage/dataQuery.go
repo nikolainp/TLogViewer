@@ -11,6 +11,7 @@ type queryResult struct {
 	table                    string
 	query                    string
 	queryWhere, queryGroupBy []string
+	queryOrderBy             []string
 	args                     []any
 
 	isExecuted bool
@@ -26,6 +27,7 @@ func (obj *Storage) SelectQuery(table string, columns ...string) interface {
 	})
 	SetFilter(filter ...string)
 	SetGroup(fields ...string)
+	SetOrder(fields ...string)
 	Next(args ...any) bool
 } {
 	result := new(queryResult)
@@ -57,6 +59,10 @@ func (obj *queryResult) SetGroup(fields ...string) {
 	obj.queryGroupBy = append(obj.queryGroupBy, strings.Join(fields, ", "))
 }
 
+func (obj *queryResult) SetOrder(fields ...string) {
+	obj.queryOrderBy = append(obj.queryOrderBy, strings.Join(fields, ", "))
+}
+
 func (obj *queryResult) Next(args ...any) (ok bool) {
 	var err error
 
@@ -67,6 +73,9 @@ func (obj *queryResult) Next(args ...any) (ok bool) {
 		}
 		if len(obj.queryGroupBy) != 0 {
 			query = query + " GROUP BY " + strings.Join(obj.queryGroupBy, ", ")
+		}
+		if len(obj.queryOrderBy) != 0 {
+			query = query + " ORDER BY " + strings.Join(obj.queryOrderBy, ", ")
 		}
 
 		return query
