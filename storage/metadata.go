@@ -149,11 +149,22 @@ func (obj *implMetaData) init() {
 				{name: "lastEventTime", datatype: "DATETIME", isTimeTo: true},
 			},
 		},
+		"workProcesses": {name: "workProcesses",
+			columns: []metaColumn{
+				{name: "processWID", datatype: "NUMBER"},
+				// Name
+				//{name: "rmngrID", datatype: "NUMBER"},
+				{name: "pid", datatype: "TEXT", isCache: false},
+				{name: "port", datatype: "TEXT", isCache: false}, 
+				{name: "serverName", datatype: "TEXT", isCache: false}, 
+				{name: "firstEventTime", datatype: "DATETIME", isTimeFrom: true},
+				{name: "lastEventTime", datatype: "DATETIME", isTimeTo: true},
+			},
+		},
 		"processesPerformance": {name: "processesPerformance",
 			columns: []metaColumn{
-				{name: "processID", datatype: "NUMBER", isService: true},
+				{name: "processWID", datatype: "NUMBER"},
 				{name: "eventTime", datatype: "DATATIME", isTimeFrom: true, isTimeTo: true},
-				{name: "process", datatype: "TEXT", isCache: false}, {name: "pid", datatype: "TEXT", isCache: false},
 				{name: "cpu", datatype: "NUMBER"},
 				{name: "queue_length", datatype: "NUMBER"},
 				{name: "queue_lengthByCpu", datatype: "NUMBER"},
@@ -186,8 +197,7 @@ func (obj *implMetaData) init() {
 		obj.tables[tableName] = table
 	}
 
-	return
-
+//	return
 }
 
 func (obj *metaTable) getCreateSQL(isCache bool) string {

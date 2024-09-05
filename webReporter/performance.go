@@ -28,10 +28,7 @@ func (obj *WebReporter) performance(w http.ResponseWriter, req *http.Request) {
 		res = make(map[string]string)
 		res[""] = "Все"
 		for i := range data {
-			if !strings.HasPrefix(data[i].Process, "rphost") {
-				continue
-			}
-			res[i] = data[i].Name
+			res[i] = "rphost_" + data[i].Pid
 		}
 		return
 	}
@@ -47,7 +44,7 @@ func (obj *WebReporter) performance(w http.ResponseWriter, req *http.Request) {
 	dataGraph, err := template.New("performance").Parse(performanceTemplate)
 	checkErr(err)
 
-	processList := obj.getProcesses()
+	processList := obj.getWorkProcesses()
 	data.Title = obj.title
 	data.DataFilter = obj.filter.getContent(req.URL.String())
 	data.Navigation = obj.navigator.getMainMenu()
@@ -56,26 +53,14 @@ func (obj *WebReporter) performance(w http.ResponseWriter, req *http.Request) {
 	processId := req.PathValue("id")
 	if processId == "" {
 		// total data
-
-		totalProcessList := make(map[string]process)
-		orderID := 0
-		for i, v := range processList {
-			if !strings.HasPrefix(v.Process, "rphost") {
-				continue
-			}
-			v.order = orderID
-			totalProcessList[i] = v
-			orderID++
-		}
-
 		data.Process = "Производительность рабочих процессов"
-		data.Columns = obj.getPerformanceStatistics(totalProcessList)
-		data.DataRows = obj.getPerformance(totalProcessList)
+		data.Columns = obj.getPerformanceStatistics(processList)
+		data.DataRows = obj.getPerformance(processList)
 
 	} else {
 		// by process
 
-		data.Process = toProcessDesc(obj.getProcess(processId))
+		data.Process = toProcessDesc(obj.getWorkProcess(processId))
 		data.Columns = obj.getProcessPerformanceStatistics(processId)
 		data.DataRows = obj.getProcessPerformance(processId)
 	}
@@ -93,7 +78,7 @@ type dataColumn struct {
 func (obj *WebReporter) getProcess(processId string) (data process) {
 
 	details := obj.storage.SelectQuery("processes")
-	details.SetTimeFilter(obj.filter.getData())
+	//details.SetTimeFilter(obj.filter.getData())
 	details.SetFilter("processID = ?", processId)
 	details.Next(
 		&data.Name, &data.Catalog, &data.Process,
@@ -106,17 +91,55 @@ func (obj *WebReporter) getProcess(processId string) (data process) {
 	return
 }
 
+func (obj *WebReporter) getWorkProcesses() (data map[string]process) {
+
+	var elem process
+
+	data = make(map[string]process, 0)
+
+	details := obj.storage.SelectQuery("workProcesses")
+	details.SetTimeFilter(obj.filter.getData())
+	//details.SetOrder("Name")
+
+	orderID := 0
+	for details.Next(
+		&elem.ProcessID,
+		&elem.Pid, &elem.Port, &elem.ServerName,
+		&elem.FirstEventTime, &elem.LastEventTime) {
+
+		elem.order = orderID
+		data[elem.ProcessID] = elem
+		orderID++
+	}
+
+	return
+}
+
+func (obj *WebReporter) getWorkProcess(processId string) (data process) {
+
+	details := obj.storage.SelectQuery("workProcesses")
+	//details.SetTimeFilter(obj.filter.getData())
+	details.SetFilter("processWID = ?", processId)
+	details.Next(
+		&data.ProcessID,
+		&data.Pid, &data.Port, &data.ServerName,
+		&data.FirstEventTime, &data.LastEventTime)
+	details.Next()
+
+	return
+}
+
 func (obj *WebReporter) getPerformanceStatistics(processes map[string]process) (data []dataColumn) {
 
 	var processID string
 	var MIN_average_response_time, AVG_average_response_time, MAX_average_response_time float64
 
-	details := obj.storage.SelectQuery("processesPerformance", "processID",
+	details := obj.storage.SelectQuery("processesPerformance", "processWID",
 		"MIN(average_response_time)", "AVG(average_response_time)", "MAX(average_response_time)",
 	)
 	details.SetTimeFilter(obj.filter.getData())
-	details.SetGroup("processID")
-	details.SetOrder("processID")
+	details.SetGroup("processWID")
+	details.SetOrder("processWID")
 
 	data = make([]dataColumn, len(processes))
 	for details.Next(
@@ -148,9 +171,9 @@ func (obj *WebReporter) getPerformance(processes map[string]process) (data []str
 	data = make([]string, 0)
 
 	details := obj.storage.SelectQuery("processesPerformance", "eventTime",
-		"ProcessID", "average_response_time")
+		"ProcessWID", "average_response_time")
 	details.SetTimeFilter(obj.filter.getData())
-	details.SetOrder("eventTime", "ProcessID")
+	details.SetOrder("eventTime", "ProcessWID")
 
 	curData := make([]string, len(processes))
 	for i := range curData {
@@ -192,7 +215,7 @@ func (obj *WebReporter) getProcessPerformanceStatistics(processId string) (data 
 	var MIN_response_time, AVG_response_time, MAX_response_time float64
 	var MIN_average_response_time, AVG_average_response_time, MAX_average_response_time float64
 
-	details := obj.storage.SelectQuery("processesPerformance", "processID",
+	details := obj.storage.SelectQuery("processesPerformance", "processWID",
 		"MIN(cpu)", "AVG(cpu)", "MAX(cpu)",
 		"MIN(queue_length)", "AVG(queue_length)", "MAX(queue_length)",
 		"MIN(queue_lengthByCpu)", "AVG(queue_lengthByCpu)", "MAX(queue_lengthByCpu)",
@@ -202,8 +225,8 @@ func (obj *WebReporter) getProcessPerformanceStatistics(processId string) (data 
 		"MIN(average_response_time)", "AVG(average_response_time)", "MAX(average_response_time)",
 	)
 	details.SetTimeFilter(obj.filter.getData())
-	details.SetFilter("processID = ?", processId)
-	details.SetGroup("processID")
+	details.SetFilter("processWID = ?", processId)
+	details.SetGroup("processWID")
 	details.Next(
 		&processID,
 		&MIN_cpu, &AVG_cpu, &MAX_cpu,
@@ -242,7 +265,7 @@ func (obj *WebReporter) getProcessPerformance(processId string) (data []string) 
 		"memory_performance", "disk_performance",
 		"response_time", "average_response_time")
 	details.SetTimeFilter(obj.filter.getData())
-	details.SetFilter("processID = ?", processId)
+	details.SetFilter("processWID = ?", processId)
 	for details.Next(&eventTime,
 		&cpu, &queue_length, &queue_lengthByCpu,
 		&memory_performance, &disk_performance,

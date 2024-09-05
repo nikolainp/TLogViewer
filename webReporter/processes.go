@@ -86,7 +86,6 @@ func (obj *WebReporter) getProcesses() (data map[string]process) {
 		&elem.FirstEventTime, &elem.LastEventTime) {
 
 		elem.order = orderID
-		elem.Name = template.JSEscapeString(elem.Name)
 		data[elem.ProcessID] = elem
 		orderID++
 	}

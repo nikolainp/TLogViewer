@@ -15,7 +15,7 @@ func (obj *WebReporter) rootPage(w http.ResponseWriter, req *http.Request) {
 
 		for i := range data {
 			rows = append(rows, fmt.Sprintf("['%s', '%s', '%s', '%s', new Date(%s), new Date(%s)]",
-				data[i].Name,
+				template.JSEscapeString(data[i].Name),
 				data[i].ServerName,
 				data[i].IP,
 				data[i].Port,

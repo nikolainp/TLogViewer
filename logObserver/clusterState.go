@@ -11,14 +11,16 @@ import (
 type clusterState struct {
 	processes  map[string]*clusterProcess
 	curProcess *clusterProcess
-	// processID  map[string]int
+
+	workProcesses  map[string]map[string]map[string]*workProcess // pid, port, serverName
+	curWorkProcess int
 
 	storage Storage
 }
 
 func (obj *clusterState) init(storage Storage) {
 	obj.processes = make(map[string]*clusterProcess)
-	// obj.processID = make(map[string]int)
+	obj.workProcesses = make(map[string]map[string]map[string]*workProcess)
 
 	obj.storage = storage
 }
@@ -97,6 +99,19 @@ func (obj *clusterState) flushAll() error {
 			)
 		}
 	}
+
+	for pid := range obj.workProcesses {
+		for port := range obj.workProcesses[pid] {
+			for serverName, process := range obj.workProcesses[pid][port] {
+				obj.storage.WriteRow("workProcesses",
+					process.processID,
+					pid, port, serverName,
+					process.firstEventTime, process.lastEventTime,
+				)
+			}
+		}
+	}
+
 	return nil
 }
 
@@ -104,7 +119,7 @@ func (obj *clusterState) flushAll() error {
 
 func (obj *clusterState) agentStandardCall(data event) {
 
-	var process, pid string
+	var pid, port, serverName string
 	var cpu, queue_length, queue_lengthByCpu int
 	var memory_performance, disk_performance int
 	var response_time int
@@ -139,7 +154,9 @@ func (obj *clusterState) agentStandardCall(data event) {
 		subFields := strings.Split(field, "=")
 		switch subFields[0] {
 		case "process":
-			process = subFields[1]
+			serverName = strings.Replace(subFields[1], "tcp://", "", 1)
+			port = getSimpleProperty(serverName, ":")
+			serverName = strings.Replace(serverName, ":"+port, "", 1)
 		case "pid":
 			pid = subFields[1]
 		case "cpu":
@@ -160,40 +177,52 @@ func (obj *clusterState) agentStandardCall(data event) {
 		}
 	}
 
-	obj.storage.WriteRow("processesPerformance", data.stopTime,
-		process, pid, cpu, queue_length, queue_lengthByCpu,
+	var process *workProcess
+	if _, ok := obj.workProcesses[pid]; ok {
+		if _, ok := obj.workProcesses[pid][port]; ok {
+			if workProcess, ok := obj.workProcesses[pid][port][serverName]; ok {
+				process = workProcess
+			} else {
+				obj.curWorkProcess++
+				process = newWorkProcess(obj.curWorkProcess, data)
+				obj.workProcesses[pid][port][serverName] = process
+			}
+		} else {
+			obj.curWorkProcess++
+			process = newWorkProcess(obj.curWorkProcess, data)
+
+			obj.workProcesses[pid][port] = make(map[string]*workProcess)
+			obj.workProcesses[pid][port][serverName] = process
+		}
+	} else {
+		obj.curWorkProcess++
+		process = newWorkProcess(obj.curWorkProcess, data)
+
+		obj.workProcesses[pid] = make(map[string]map[string]*workProcess)
+		obj.workProcesses[pid][port] = make(map[string]*workProcess)
+		obj.workProcesses[pid][port][serverName] = process
+	}
+
+	process.addEvent(obj.curProcess.processID, data)
+
+	obj.storage.WriteRow("processesPerformance",
+		process.processID,
+		data.stopTime,
+		cpu, queue_length, queue_lengthByCpu,
 		memory_performance, disk_performance,
 		response_time, average_response_time)
 }
 
 func (obj *clusterState) agentStandardCallFinish() {
 
-	rows := obj.storage.SelectQuery("processesPerformance", "process, pid")
-	for {
-		var serverName, pid string
-
-		ok := rows.Next(&serverName, &pid)
-		if !ok {
-			break
-		}
-		serverName = strings.Replace(serverName, "tcp://", "", 1)
-		port := getSimpleProperty(serverName, ":")
-		serverName = strings.Replace(serverName, ":"+port, "", 1)
-
-		for _, process := range obj.processes {
-			if strings.Compare(process.server, serverName) == 0 &&
-				process.pid == pid {
+	// find port by pid
+	for _, process := range obj.processes {
+		if data, ok := obj.workProcesses[process.pid]; ok && len(data) == 1 {
+			for port := range data {
 				process.port = port
-				break
 			}
 		}
-
 	}
-	for _, process := range obj.processes {
-		obj.storage.Update("processesPerformance", "processID", process.processID,
-			"process", "tcp://"+process.server+":"+process.port, "pid", process.pid)
-	}
-
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -341,6 +370,43 @@ func (obj *clusterProcess) addEvent(data event) {
 		}
 
 	}
+}
+
+type workProcess struct {
+	processID int
+	rmngrID   map[int]bool
+
+	name string
+	// pid, port   string
+	// server      string
+
+	firstEventTime time.Time
+	lastEventTime  time.Time
+}
+
+func newWorkProcess(processID int, data event) *workProcess {
+	obj := new(workProcess)
+
+	obj.processID = processID
+
+	obj.rmngrID = make(map[int]bool)
+
+	obj.firstEventTime = data.stopTime
+	obj.lastEventTime = data.stopTime
+
+	return obj
+}
+
+func (obj *workProcess) addEvent(rmngrID int, data event) {
+	obj.rmngrID[rmngrID] = true
+
+	if obj.firstEventTime.After(data.stopTime) {
+		obj.firstEventTime = data.stopTime
+	}
+	if obj.lastEventTime.Before(data.stopTime) {
+		obj.lastEventTime = data.stopTime
+	}
+
 }
 
 ///////////////////////////////////////////////////////////////////////////////
