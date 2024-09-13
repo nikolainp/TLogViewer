@@ -217,9 +217,14 @@ func (obj *clusterState) agentStandardCallFinish() {
 
 	// find port by pid
 	for _, process := range obj.processes {
-		if data, ok := obj.workProcesses[process.pid]; ok && len(data) == 1 {
-			for port := range data {
-				process.port = port
+		if data1, ok := obj.workProcesses[process.pid]; ok && len(data1) == 1 {
+			for port, data2 := range data1 {
+				if len(data2) == 1 {
+					process.port = port
+					for _, data3 := range data2 {
+						data3.name = process.name
+					}
+				}
 			}
 		}
 	}
