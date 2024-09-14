@@ -12,7 +12,7 @@ type clusterState struct {
 	processes  map[string]*clusterProcess
 	curProcess *clusterProcess
 
-	workProcesses  map[string]map[string]map[string]*workProcess // pid, port, serverName
+	workProcesses  map[string]map[string]map[string]*workProcess // pid, serverName, port
 	curWorkProcess int
 
 	storage Storage
@@ -101,10 +101,10 @@ func (obj *clusterState) flushAll() error {
 	}
 
 	for pid := range obj.workProcesses {
-		for port := range obj.workProcesses[pid] {
-			for serverName, process := range obj.workProcesses[pid][port] {
+		for serverName := range obj.workProcesses[pid] {
+			for port, process := range obj.workProcesses[pid][serverName] {
 				obj.storage.WriteRow("workProcesses",
-					process.processID,
+					process.processID, process.name,
 					pid, port, serverName,
 					process.firstEventTime, process.lastEventTime,
 				)
@@ -179,28 +179,28 @@ func (obj *clusterState) agentStandardCall(data event) {
 
 	var process *workProcess
 	if _, ok := obj.workProcesses[pid]; ok {
-		if _, ok := obj.workProcesses[pid][port]; ok {
-			if workProcess, ok := obj.workProcesses[pid][port][serverName]; ok {
+		if _, ok := obj.workProcesses[pid][serverName]; ok {
+			if workProcess, ok := obj.workProcesses[pid][serverName][port]; ok {
 				process = workProcess
 			} else {
 				obj.curWorkProcess++
 				process = newWorkProcess(obj.curWorkProcess, data)
-				obj.workProcesses[pid][port][serverName] = process
+				obj.workProcesses[pid][serverName][port] = process
 			}
 		} else {
 			obj.curWorkProcess++
 			process = newWorkProcess(obj.curWorkProcess, data)
 
-			obj.workProcesses[pid][port] = make(map[string]*workProcess)
-			obj.workProcesses[pid][port][serverName] = process
+			obj.workProcesses[pid][serverName] = make(map[string]*workProcess)
+			obj.workProcesses[pid][serverName][port] = process
 		}
 	} else {
 		obj.curWorkProcess++
 		process = newWorkProcess(obj.curWorkProcess, data)
 
 		obj.workProcesses[pid] = make(map[string]map[string]*workProcess)
-		obj.workProcesses[pid][port] = make(map[string]*workProcess)
-		obj.workProcesses[pid][port][serverName] = process
+		obj.workProcesses[pid][serverName] = make(map[string]*workProcess)
+		obj.workProcesses[pid][serverName][port] = process
 	}
 
 	process.addEvent(obj.curProcess.processID, data)
@@ -217,14 +217,12 @@ func (obj *clusterState) agentStandardCallFinish() {
 
 	// find port by pid
 	for _, process := range obj.processes {
-		if data1, ok := obj.workProcesses[process.pid]; ok && len(data1) == 1 {
-			for port, data2 := range data1 {
-				if len(data2) == 1 {
+		if dataByProcess, ok := obj.workProcesses[process.pid][process.server]; ok {
+			for port, workProcess := range dataByProcess {
+				if len(dataByProcess) == 1 {
 					process.port = port
-					for _, data3 := range data2 {
-						data3.name = process.name
-					}
 				}
+				workProcess.name = process.name
 			}
 		}
 	}

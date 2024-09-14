@@ -1,6 +1,7 @@
 package webreporter
 
 import (
+	"sort"
 	"strings"
 	"text/template"
 )
@@ -26,22 +27,23 @@ func (obj *navigation) getSubMenu(url string, menuItems map[string]string) strin
 	sample, err := template.New("navigation2").Parse(navigationSubMenuTemplate)
 	checkErr(err)
 
-	// getMenuItems := func(menuItems map[string]string) (res []struct{ Id, Name string }) {
-	// 	for item, value := range menuItems {
-	// 		res = append(res, struct {
-	// 			Id   string
-	// 			Name string
-	// 		}{Id: item, Name: value})
-	// 	}
-	// 	return
-	// }
+	getMenuItems := func(menuItems map[string]string) (res []struct{ Id, Name string }) {
+		for item, value := range menuItems {
+			res = append(res, struct {
+				Id   string
+				Name string
+			}{Id: item, Name: value})
+		}
+		sort.Slice(res, func(i, j int) bool { return strings.Compare(res[i].Name, res[j].Name) < 0 })
+		return
+	}
 
 	data := struct {
 		URL       string
-		MenuItems map[string]string
+		MenuItems []struct{ Id, Name string }
 	}{
 		URL:       url,
-		MenuItems: menuItems,
+		MenuItems: getMenuItems(menuItems),
 	}
 
 	err = sample.Execute(w, data)
@@ -64,12 +66,12 @@ const navigationSubMenuTemplate = `
 	{{ $url := .URL }}
 	<nav class="menu">	
 		<ul class="nav" style="display: inline-grid;">
-		{{ range $index, $item := .MenuItems }}
+		{{ range $item := .MenuItems }}
 			<li><a style="width: 150px; overflow-wrap: anywhere;" 
-				{{ if (eq $index "") }}
-				href="{{$url}}">{{$item}}
+				{{ if (eq $item.Id "") }}
+				href="{{$url}}">{{$item.Name}}
 				{{ else }}
-				href="{{$url}}/{{$index}}">{{$item}}
+				href="{{$url}}/{{$item.Id}}">{{$item.Name}}
 				{{ end }}
 				</a></li>
 		{{end}}

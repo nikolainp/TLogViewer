@@ -152,7 +152,7 @@ func (obj *implMetaData) init() {
 		"workProcesses": {name: "workProcesses",
 			columns: []metaColumn{
 				{name: "processWID", datatype: "NUMBER"},
-				// Name
+				{name: "name", datatype: "TEXT"},
 				//{name: "rmngrID", datatype: "NUMBER"},
 				{name: "pid", datatype: "TEXT", isCache: false},
 				{name: "port", datatype: "TEXT", isCache: false}, 

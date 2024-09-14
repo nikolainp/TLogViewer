@@ -28,7 +28,11 @@ func (obj *WebReporter) performance(w http.ResponseWriter, req *http.Request) {
 		res = make(map[string]string)
 		res[""] = "Все"
 		for i := range data {
-			res[i] = "rphost_" + data[i].Pid
+			if len(data[i].Name) == 0 {
+				res[i] = "process_" + data[i].Pid
+			} else {
+				res[i] = data[i].Name
+			}
 		}
 		return
 	}
@@ -99,11 +103,11 @@ func (obj *WebReporter) getWorkProcesses() (data map[string]process) {
 
 	details := obj.storage.SelectQuery("workProcesses")
 	details.SetTimeFilter(obj.filter.getData())
-	//details.SetOrder("Name")
+	details.SetOrder("Name", "Pid")
 
 	orderID := 0
 	for details.Next(
-		&elem.ProcessID,
+		&elem.ProcessID, &elem.Name,
 		&elem.Pid, &elem.Port, &elem.ServerName,
 		&elem.FirstEventTime, &elem.LastEventTime) {
 
@@ -121,7 +125,7 @@ func (obj *WebReporter) getWorkProcess(processId string) (data process) {
 	//details.SetTimeFilter(obj.filter.getData())
 	details.SetFilter("processWID = ?", processId)
 	details.Next(
-		&data.ProcessID,
+		&data.ProcessID, &data.Name,
 		&data.Pid, &data.Port, &data.ServerName,
 		&data.FirstEventTime, &data.LastEventTime)
 	details.Next()
