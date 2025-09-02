@@ -62,8 +62,7 @@ func main() {
 		storage = getOldStorage(conf.StoragePath)
 	}
 
-	reporter := webreporter.New(storage)
-	reporter.Start()
+	startWebServer(storage, cancelChan)
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -89,7 +88,7 @@ func getConfig(args []string) config.Config {
 func cancelAndExit() {
 	cancelChan <- true
 	close(cancelChan)
-	os.Exit(0)
+	//	os.Exit(0)
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -114,4 +113,12 @@ func getOldStorage(path string) *storage.Storage {
 	}
 
 	return db
+}
+
+func startWebServer(storage *storage.Storage, isCancelChan chan bool) {
+	reporter := webreporter.New(storage, isCancelChan)
+	if err := reporter.Start(); err != nil {
+		fmt.Fprintf(os.Stderr, "WebServer error: ", err)
+		cancelAndExit()
+	}
 }
