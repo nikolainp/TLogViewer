@@ -1,0 +1,20 @@
+version: "2"
+cloud:
+    organization: ""
+    project: ""
+    hostname: ""
+servers:
+  - engine: "sqlite"
+sql: 
+  - engine: "sqlite"
+    queries: "storage/query.sql"
+    schema: "storage/schema.sql"
+    gen:
+      go:
+        package: "storage"
+        out: "storage"
+overrides:
+    go: null
+plugins: []
+rules: []
+options: {}

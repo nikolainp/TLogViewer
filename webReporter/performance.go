@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
-	"text/template"
 	"time"
 )
 
@@ -45,9 +44,6 @@ func (obj *WebReporter) performance(w http.ResponseWriter, req *http.Request) {
 		)
 	}
 
-	dataGraph, err := template.New("performance").Parse(performanceTemplate)
-	checkErr(err)
-
 	processList := obj.getWorkProcesses()
 	data.Title = obj.title
 	data.DataFilter = obj.filter.getContent(req.URL.String())
@@ -70,7 +66,7 @@ func (obj *WebReporter) performance(w http.ResponseWriter, req *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	err = dataGraph.Execute(w, data)
+	err := obj.templates.ExecuteTemplate(w, "performance.gohtml", data)
 	checkErr(err)
 }
 
@@ -288,113 +284,3 @@ func (obj *WebReporter) getProcessPerformance(processId string) (data []string) 
 
 	return
 }
-
-const performanceTemplate = `
-<html>
-<head>
-
-  <title>{{.Title}} | Performance</title>
-
-  <link rel="stylesheet" href="/static/style.css">
-  <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
-  <script type="text/javascript">
-      google.charts.load('current', {'packages':['annotationchart']});
-      google.charts.setOnLoadCallback(drawChart);
-
-      let chart;
-
-      function drawChart() {
-        var columns = new google.visualization.DataTable();
-        columns.addColumn('string', 'Title');
-        columns.addColumn('number', 'Minimum');
-        columns.addColumn('number', 'Maximum');
-        columns.addColumn('number', 'Average');
-        columns.addColumn('boolean', 'Show');
-
-        columns.addRows([
-        {{range $i, $column := .Columns -}}
-          ['{{$column.Name}}', {{$column.Minimum}}, {{$column.Maximum}}, {{$column.Average}}, true],
-        {{end}}
-        ]);
-
-
-        var data = new google.visualization.DataTable();
-        data.addColumn('date', 'Date');
-        {{range $column := .Columns -}}
-        data.addColumn('number', '{{$column.Name}}');
-        {{end}}
-		    // [new Date(2314, 2, 16), 24045, 12374],
-        
-        data.addRows([
-			{{- range $index, $dataRow := .DataRows -}}
-			  {{- if (eq $index 0)}}
-           {{$dataRow}}
-        {{- else}}
-          ,{{$dataRow}}
-        {{- end}}
-			{{- end}}
-        ]);
-
-        table = new google.visualization.Table(document.getElementById('table_div'));
-        chart = new google.visualization.AnnotationChart(document.getElementById('chart_div'));
-
-        chart.draw(data, {displayAnnotations: true, interpolateNulls: true, thickness: 5});
-        setColumnColors(columns);
-        drawTable(table, columns)
-
-        google.visualization.events.addListener(table, 'select', function() {
-          var row = table.getSelection()[0].row;
-          var value = columns.getValue(row, 4);
-
-          value = !value;
-          columns.setValue(row, 4, value);
-          if (value) {
-              chart.showDataColumns(row)
-          } else {
-              chart.hideDataColumns(row)
-          }
-
-          drawTable(table, columns);
-        });
-
-      }
-
-      function setColumnColors(table) {
-        var legends = document.getElementsByClassName("legend-dot");
-
-        for (let i = 0; i < legends.length; i++) {
-            table.setProperties(i, 0, {'style': 'color: ' + legends[i].style.backgroundColor +'; white-space: nowrap;'});
-            table.setProperties(i, 4, {'style': 'color: ' + legends[i].style.backgroundColor +';'});
-        }
-      }
-
-      function drawTable(table, data) {
-        table.draw(data, {showRowNumber: true, allowHtml: true, width: '100%', height: '100%'});
-      }
-
-      </script>
-	</script>
-</head>
-<body>
-	{{.DataFilter}}
-	{{.Navigation}}
-
-	<div style="width: 100%; height: 100%; display: table;">
-    	<div style="display: table-row;">
-        	<div style="display: table-cell;">{{.ProcessList}}</div>
-        	<div style="display: table-cell;">
-				<div class="dropdown" style='height: 30px;'>
-					<span>{{.Process}}</span>
-					<div class="dropdown-content">
-						<div id='table_div'></div>
-					</div>
-				</div>
-
-				<div id='chart_div' style='width: 100%; height: calc(100% - 50px);'></div>
-			</div>
-    	</div>
-	</div>
-	
-</body>
-</html>
-`

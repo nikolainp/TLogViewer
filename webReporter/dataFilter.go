@@ -8,8 +8,18 @@ import (
 )
 
 type dataFilter struct {
+	htmlTemplate *template.Template
+
 	minimumTime, startTime  time.Time
 	maximumTime, finishTime time.Time
+}
+
+func getDataFilter(html *template.Template) *dataFilter {
+	obj := new(dataFilter)
+
+	obj.htmlTemplate = html
+
+	return obj
 }
 
 func (obj *dataFilter) setTime(start, finish time.Time) {
@@ -21,8 +31,6 @@ func (obj *dataFilter) setTime(start, finish time.Time) {
 
 func (obj *dataFilter) getContent(url string) string {
 	w := new(strings.Builder)
-	sample, err := template.New("dataFilter").Parse(dataFilterTemplate)
-	checkErr(err)
 
 	data := struct {
 		Url                     string
@@ -36,7 +44,7 @@ func (obj *dataFilter) getContent(url string) string {
 		FinishTime:  obj.finishTime.Format("2006-01-02T15:04"),
 	}
 
-	err = sample.Execute(w, data)
+	err := obj.htmlTemplate.Execute(w, data)
 	checkErr(err)
 
 	return w.String()
@@ -74,20 +82,3 @@ func (obj *dataFilter) getFinishTime(tt time.Time) time.Time {
 	return obj.finishTime
 }
 
-const dataFilterTemplate = `
-<form method="post" action="/datafilter">
-  <fieldset>
-	<input type="hidden" name="url" value="{{.Url}}" />
-  	<label for="TimeFrom">Данные отобраны с:</label>
-	<input type="datetime-local" id="TimeFrom" name="TimeFrom" 
-		min="{{.MinimumTime}}" max="{{.MaximumTime}}"
-		value="{{.StartTime}}" style="width:150px"/>
-  	<label for="TimeTo">по:</label>
-	<input type="datetime-local" id="TimeTo" name="TimeTo" 
-		min="{{.MinimumTime}}" max="{{.MaximumTime}}"
-		value="{{.FinishTime}}" style="width:150px"/>
-	<button type="submit">Ок</button>
-	<button type="reset">Cancel</button>
-  </fieldset>
-</form>
-`
