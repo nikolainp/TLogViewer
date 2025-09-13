@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os"
 	"text/template"
 	"time"
 
@@ -41,7 +42,7 @@ func New(storage *storage.Storage, isCancelChan chan bool) *WebReporter {
 
 	obj.storage = storage
 	obj.srv = http.Server{
-		Handler: obj.getHandlers(),
+		Handler: logging(log.New(os.Stdout, "http: ", log.LstdFlags))(obj.getHandlers()),
 		Addr:    fmt.Sprintf(":%d", obj.port),
 	}
 	obj.templates, err = template.ParseFS(templateContent, "templates/*.gohtml")
@@ -60,6 +61,8 @@ func New(storage *storage.Storage, isCancelChan chan bool) *WebReporter {
 func (obj *WebReporter) Start() error {
 	log.Printf("start web-server, port: %d\n", obj.port)
 
+	done := make(chan bool)
+
 	go func() {
 		<-obj.cancelChan
 
@@ -72,12 +75,16 @@ func (obj *WebReporter) Start() error {
 		if err := obj.srv.Shutdown(ctx); err != nil {
 			log.Fatalf("could not gracefully shutdown the web-server: %v\n", err)
 		}
+		close(done)
 	}()
 
 	err := obj.srv.ListenAndServe()
 	if err != http.ErrServerClosed {
 		return err
 	}
+
+	<-done
+	log.Println("server stopped")
 	return nil
 }
 
@@ -110,8 +117,21 @@ func (obj *WebReporter) headers(w http.ResponseWriter, req *http.Request) {
 	}
 }
 
+///////////////////////////////////////////////////////////////////////////////
+
 var checkErr = func(err error) {
 	if err != nil {
 		log.Fatal(err)
+	}
+}
+
+func logging(logger *log.Logger) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			defer func() {
+				logger.Println(r.Method, r.URL.Path)
+			}()
+			next.ServeHTTP(w, r)
+		})
 	}
 }
