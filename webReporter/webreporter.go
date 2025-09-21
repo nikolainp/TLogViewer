@@ -45,7 +45,7 @@ func New(storage *storage.Storage, isCancelChan chan bool) *WebReporter {
 		Handler: logging(log.New(os.Stdout, "http: ", log.LstdFlags))(obj.getHandlers()),
 		Addr:    fmt.Sprintf(":%d", obj.port),
 	}
-	obj.templates, err = template.ParseFS(templateContent, "templates/*.gohtml")
+	obj.templates, err = template.ParseFS(templateContent, "templates/*.html", "templates/*.gohtml")
 	checkErr(err)
 
 	details := obj.getRootDetails()
@@ -100,6 +100,7 @@ func (obj *WebReporter) getHandlers() *http.ServeMux {
 	sm.HandleFunc("/performance/{id}", obj.performance)
 
 	sm.HandleFunc("/datafilter", obj.filter.setContext)
+	sm.HandleFunc("/data/{source}", obj.dataSource)
 
 	sm.Handle("/static/", http.FileServer(http.FS(staticContent)))
 	sm.HandleFunc("/headers", obj.headers)
@@ -128,9 +129,9 @@ var checkErr = func(err error) {
 func logging(logger *log.Logger) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			defer func() {
-				logger.Println(r.Method, r.URL.Path)
-			}()
+			defer func(start time.Time) {
+				logger.Printf("(%s) %s %s", time.Since(start), r.Method, r.URL.Path)
+			}(time.Now())
 			next.ServeHTTP(w, r)
 		})
 	}

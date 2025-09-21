@@ -3,29 +3,10 @@ package webreporter
 import (
 	"fmt"
 	"net/http"
-	"text/template"
 	"time"
 )
 
 func (obj *WebReporter) rootPage(w http.ResponseWriter, req *http.Request) {
-
-	toDataRows := func(data map[string]process) []string {
-
-		rows := make([]string, 0, len(data))
-
-		for i := range data {
-			rows = append(rows, fmt.Sprintf("['%s', '%s', '%s', '%s', new Date(%s), new Date(%s)]",
-				template.JSEscapeString(data[i].Name),
-				data[i].ServerName,
-				data[i].IP,
-				data[i].Port,
-				data[i].FirstEventTime.Format("2006, 01, 02, 15, 04, 05"),
-				data[i].LastEventTime.Format("2006, 01, 02, 15, 04, 05"),
-			))
-		}
-
-		return rows
-	}
 
 	details := obj.getRootDetails()
 
@@ -47,11 +28,11 @@ func (obj *WebReporter) rootPage(w http.ResponseWriter, req *http.Request) {
 		LastEventTime:   details.LastEventTime.Format("2006-01-02 15:04:05"),
 		DataFilter:      obj.filter.getContent(req.URL.String()),
 		Navigation:      obj.navigator.getMainMenu(),
-		Processes:       toDataRows(obj.getProcesses()),
+		//		Processes:       toDataRows(obj.getProcesses()),
 	}
 
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	err := obj.templates.ExecuteTemplate(w, "rootPage.gohtml", data)
+	err := obj.templates.ExecuteTemplate(w, "rootPage.html", data)
 	checkErr(err)
 }
 
