@@ -3,7 +3,6 @@ package webreporter
 import (
 	"fmt"
 	"net/http"
-	"strings"
 	"time"
 )
 
@@ -18,9 +17,10 @@ func (obj *WebReporter) performance(w http.ResponseWriter, req *http.Request) {
 
 		ProcessList string
 
-		Process  string
-		Columns  []dataColumn
-		DataRows []string
+		ProcessId string
+		Process   string
+		// Columns  []dataColumn
+		// DataRows []string
 	}{}
 
 	toProcessList := func(data map[string]process) (res map[string]string) {
@@ -50,23 +50,23 @@ func (obj *WebReporter) performance(w http.ResponseWriter, req *http.Request) {
 	data.Navigation = obj.navigator.getMainMenu()
 	data.ProcessList = obj.navigator.getSubMenu(urlString, toProcessList(processList))
 
-	processId := req.PathValue("id")
-	if processId == "" {
+	data.ProcessId = req.PathValue("id")
+	if data.ProcessId == "" {
 		// total data
 		data.Process = "Производительность рабочих процессов"
-		data.Columns = obj.getPerformanceStatistics(processList)
-		data.DataRows = obj.getPerformance(processList)
+		// data.Columns = obj.getPerformanceStatistics(processList)
+		// data.DataRows = obj.getPerformance(processList)
 
 	} else {
 		// by process
 
-		data.Process = toProcessDesc(obj.getWorkProcess(processId))
-		data.Columns = obj.getProcessPerformanceStatistics(processId)
-		data.DataRows = obj.getProcessPerformance(processId)
+		data.Process = toProcessDesc(obj.getWorkProcess(data.ProcessId))
+		// data.Columns = obj.getProcessPerformanceStatistics(processId)
+		// data.DataRows = obj.getProcessPerformance(processId)
 	}
 
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	err := obj.templates.ExecuteTemplate(w, "performance.gohtml", data)
+	err := obj.templates.ExecuteTemplate(w, "performance.html", data)
 	checkErr(err)
 }
 
@@ -129,10 +129,17 @@ func (obj *WebReporter) getWorkProcess(processId string) (data process) {
 	return
 }
 
-func (obj *WebReporter) getPerformanceStatistics(processes map[string]process) (data []dataColumn) {
+func (obj *WebReporter) getPerformanceStatistics() (data dataSource) {
 
 	var processID string
 	var MIN_average_response_time, AVG_average_response_time, MAX_average_response_time float64
+
+	data.columns = make([]string, 4)
+	data.columns[0] = `{"id":"","label":"Process","type":"string"}`
+	data.columns[1] = `{"id":"","label":"Minimun","type":"number"}`
+	data.columns[2] = `{"id":"","label":"Maximum","type":"number"}`
+	data.columns[3] = `{"id":"","label":"Average","type":"number"}`
+	data.rows = make([]string, 0)
 
 	details := obj.storage.SelectQuery("processesPerformance", "processWID",
 		"MIN(average_response_time)", "AVG(average_response_time)", "MAX(average_response_time)",
@@ -141,65 +148,54 @@ func (obj *WebReporter) getPerformanceStatistics(processes map[string]process) (
 	details.SetGroup("processWID")
 	details.SetOrder("processWID")
 
-	data = make([]dataColumn, len(processes))
 	for details.Next(
 		&processID,
 		&MIN_average_response_time, &AVG_average_response_time, &MAX_average_response_time,
 	) {
-		if _, ok := processes[processID]; !ok {
-			continue
-		}
-
-		data[processes[processID].order] =
-			dataColumn{
-				Name:    processes[processID].Name,
-				Minimum: 10000 / MIN_average_response_time,
-				Average: 10000 / AVG_average_response_time,
-				Maximum: 10000 / MAX_average_response_time,
-			}
+		data.rows = append(data.rows, fmt.Sprintf(
+			`{"c":[{"v":"%s"},{"v":"%s"},{"v":"%s"},{"v":"%s"}]}`,
+			processID,
+			10000/MIN_average_response_time,
+			10000/AVG_average_response_time,
+			10000/MAX_average_response_time,
+		))
 	}
 
 	return
 }
 
-func (obj *WebReporter) getPerformance(processes map[string]process) (data []string) {
+func (obj *WebReporter) getPerformance() (data dataSource) {
 
 	var eventTime string
 	var processID string
 	var average_response_time float64
-
-	data = make([]string, 0)
 
 	details := obj.storage.SelectQuery("processesPerformance", "eventTime",
 		"ProcessWID", "average_response_time")
 	details.SetTimeFilter(obj.filter.getData())
 	details.SetOrder("eventTime", "ProcessWID")
 
-	curData := make([]string, len(processes))
-	for i := range curData {
-		curData[i] = "null"
-	}
-	addData := func() {
-	}
+	data.columns = make([]string, 1)
+	data.columns[0] = `{"id":"","label":"date","type":"Date"}`
+	data.dataByTime = make(map[time.Time]*dataSourceRow)
 
+	columnByID := make(map[string]int)
 	for details.Next(&eventTime,
 		&processID, &average_response_time) {
-
-		if _, ok := processes[processID]; !ok {
-			continue
-		}
 
 		eventTTime, err := time.ParseInLocation("2006-01-02 15:04:05", eventTime[:19], time.Local)
 		checkErr(err)
 
-		curData[processes[processID].order] = fmt.Sprintf("%g", 10000/average_response_time)
-		data = append(data, fmt.Sprintf("[new Date(%s), %s]",
-			eventTTime.Format("2006, 01, 02, 15, 04, 05"),
-			strings.Join(curData, ","),
-		))
-		curData[processes[processID].order] = "null"
+		if _, exists := columnByID[processID]; !exists {
+			columnByID[processID] = len(columnByID)
+		}
+		if _, exists := data.dataByTime[eventTTime]; !exists {
+			data.dataByTime[eventTTime] = &dataSourceRow{cells: make(map[int]float64)}
+		}
+
+		d := data.dataByTime[eventTTime]
+		d.cells[columnByID[processID]] = 10000 / average_response_time
 	}
-	addData()
 
 	return
 }

@@ -3,10 +3,16 @@ package webreporter
 import (
 	"fmt"
 	"net/http"
+	"text/template"
 	"time"
 )
 
 func (obj *WebReporter) rootPage(w http.ResponseWriter, req *http.Request) {
+	if req.URL.Path != "/" {
+		obj.logger.Printf("NotFound: %s %s", req.Method, req.URL.Path)
+		http.NotFound(w, req)
+		return
+	}
 
 	details := obj.getRootDetails()
 
@@ -54,6 +60,43 @@ func (obj *WebReporter) getRootDetails() (data rootDetails) {
 		&data.FirstEventTime, &data.LastEventTime)
 
 	details.Next()
+
+	return
+}
+
+func (obj *WebReporter) getProcesses() (data dataSource) {
+
+	var elem process
+
+	data.columns = make([]string, 6)
+	data.columns[0] = `{"id":"","label":"Process","type":"string"}`
+	data.columns[1] = `{"id":"","label":"Server","type":"string"}`
+	data.columns[2] = `{"id":"","label":"IP","type":"string"}`
+	data.columns[3] = `{"id":"","label":"Port","type":"string"}`
+	data.columns[4] = `{"id":"","label":"First event","type":"datetime"}`
+	data.columns[5] = `{"id":"","label":"Last event","type":"datetime"`
+
+	data.rows = make([]string, 0)
+
+	details := obj.storage.SelectQuery("processes")
+	details.SetTimeFilter(obj.filter.getData())
+	details.SetOrder("Name")
+
+	for details.Next(
+		&elem.Name, &elem.Catalog, &elem.Process,
+		&elem.ProcessID, &elem.ProcessType,
+		&elem.Pid, &elem.Port, &elem.UID,
+		&elem.ServerName, &elem.IP,
+		&elem.FirstEventTime, &elem.LastEventTime) {
+
+		data.rows = append(data.rows, fmt.Sprintf(
+			`{"c":[{"v":"%s"},{"v":"%s"},{"v":"%s"},{"v":"%s"},{"v":"Date(%s)"},{"v":"Date(%s)"}]}`,
+			template.JSEscapeString(elem.Name),
+			elem.ServerName, elem.IP, elem.Port,
+			elem.FirstEventTime.Format("2006, 01, 02, 15, 04, 05"),
+			elem.LastEventTime.Format("2006, 01, 02, 15, 04, 05"),
+		))
+	}
 
 	return
 }

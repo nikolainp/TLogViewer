@@ -1,39 +1,41 @@
 <html>
+
 <head>
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
 
-  <title>{{.Title}}</title>
+	<title>{{.Title}}</title>
 
-  <link rel="stylesheet" href="/static/style.css">
-  <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
-  <script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jquery/1.10.2/jquery.min.js"></script>
-  <script type="text/javascript">
+	<link rel="stylesheet" href="/static/style.css">
+	<script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
+	<script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jquery/1.10.2/jquery.min.js"></script>
+	<script type="text/javascript">
 
-    // Load the Visualization API and the controls package.
-	google.charts.load('current', {'packages':['table']});
+		// Load the Visualization API and the controls package.
+		google.charts.load('current', { 'packages': ['table'] });
 
-    // Set a callback to run when the Google Visualization API is loaded.
-    google.charts.setOnLoadCallback(drawDashboard);
+		// Set a callback to run when the Google Visualization API is loaded.
+		google.charts.setOnLoadCallback(drawDashboard);
 
-    function drawDashboard() {
-      	var jsonData = $.ajax({
-				url: "/data/processes.json",
+		function drawDashboard() {
+			var jsonData = $.ajax({
+				url: "/data/root/processes.json",
 				dataType: "json",
 				async: false
 			}).responseText;
-          
-	    var data = new google.visualization.DataTable(jsonData);
-        var table = new google.visualization.Table(document.getElementById('table_div'));
 
-		var dateFormat = new google.visualization.DateFormat({pattern: "YYYY-MM-dd HH:mm:ss"});
-		dateFormat.format(data, 4);
-		dateFormat.format(data, 5);
+			var data = new google.visualization.DataTable(jsonData);
+			var table = new google.visualization.Table(document.getElementById('table_div'));
 
-        table.draw(data, {showRowNumber: false, width: '100%'});
-	}
+			var dateFormat = new google.visualization.DateFormat({ pattern: "YYYY-MM-dd HH:mm:ss" });
+			dateFormat.format(data, 4);
+			dateFormat.format(data, 5);
+
+			table.draw(data, { showRowNumber: false, width: '100%' });
+		}
 
 	</script>
 </head>
+
 <body>
 	<div>
 		<h2>Источник данных: {{.Title}}</h2>
@@ -48,4 +50,5 @@
 	<div id="table_div"></div>
 
 </body>
+
 </html>

@@ -38,7 +38,7 @@ func (obj *WebReporter) processes(w http.ResponseWriter, req *http.Request) {
 		Title:      obj.title,
 		DataFilter: obj.filter.getContent(req.URL.String()),
 		Navigation: obj.navigator.getMainMenu(),
-		Processes:  toDataRows(obj.getProcesses()),
+		Processes:  toDataRows(obj.getProcessesLiveTime()),
 	}
 
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
@@ -64,7 +64,7 @@ type process struct {
 	order int
 }
 
-func (obj *WebReporter) getProcesses() (data map[string]process) {
+func (obj *WebReporter) getProcessesLiveTime() (data map[string]process) {
 
 	var elem process
 
