@@ -118,7 +118,7 @@ func getOldStorage(path string) *storage.Storage {
 func startWebServer(storage *storage.Storage, isCancelChan chan bool) {
 	reporter := webreporter.New(storage, isCancelChan)
 	if err := reporter.Start(); err != nil {
-		fmt.Fprintf(os.Stderr, "WebServer error: ", err)
+		fmt.Fprintf(os.Stderr, "WebServer error: %v", err)
 		cancelAndExit()
 	}
 }

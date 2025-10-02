@@ -54,15 +54,9 @@ func (obj *WebReporter) performance(w http.ResponseWriter, req *http.Request) {
 	if data.ProcessId == "" {
 		// total data
 		data.Process = "Производительность рабочих процессов"
-		// data.Columns = obj.getPerformanceStatistics(processList)
-		// data.DataRows = obj.getPerformance(processList)
-
 	} else {
 		// by process
-
 		data.Process = toProcessDesc(obj.getWorkProcess(data.ProcessId))
-		// data.Columns = obj.getProcessPerformanceStatistics(processId)
-		// data.DataRows = obj.getProcessPerformance(processId)
 	}
 
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
@@ -129,16 +123,31 @@ func (obj *WebReporter) getWorkProcess(processId string) (data process) {
 	return
 }
 
-func (obj *WebReporter) getPerformanceStatistics() (data dataSource) {
+func (obj *WebReporter) getPerformanceStatistics(processId string) (data dataSource) {
+	if processId == "" {
+		return obj.getTotalPerformanceStatistics()
+	}
+	return obj.getProcessPerformanceStatistics(processId)
+}
+
+func (obj *WebReporter) getPerformance(processId string) (data dataSource) {
+	if processId == "" {
+		return obj.getTotalPerformance()
+	}
+	return obj.getProcessPerformance(processId)
+}
+
+func (obj *WebReporter) getTotalPerformanceStatistics() (data dataSource) {
 
 	var processID string
 	var MIN_average_response_time, AVG_average_response_time, MAX_average_response_time float64
 
-	data.columns = make([]string, 4)
+	data.columns = make([]string, 5)
 	data.columns[0] = `{"id":"","label":"Process","type":"string"}`
 	data.columns[1] = `{"id":"","label":"Minimun","type":"number"}`
 	data.columns[2] = `{"id":"","label":"Maximum","type":"number"}`
 	data.columns[3] = `{"id":"","label":"Average","type":"number"}`
+	data.columns[4] = `{"id":"","label":"Show","type":"boolean"}`
 	data.rows = make([]string, 0)
 
 	details := obj.storage.SelectQuery("processesPerformance", "processWID",
@@ -153,7 +162,7 @@ func (obj *WebReporter) getPerformanceStatistics() (data dataSource) {
 		&MIN_average_response_time, &AVG_average_response_time, &MAX_average_response_time,
 	) {
 		data.rows = append(data.rows, fmt.Sprintf(
-			`{"c":[{"v":"%s"},{"v":"%s"},{"v":"%s"},{"v":"%s"}]}`,
+			`{"c":[{"v":"%s"},{"v":"%g"},{"v":"%g"},{"v":"%g"},{"v":true}]}`,
 			processID,
 			10000/MIN_average_response_time,
 			10000/AVG_average_response_time,
@@ -164,7 +173,7 @@ func (obj *WebReporter) getPerformanceStatistics() (data dataSource) {
 	return
 }
 
-func (obj *WebReporter) getPerformance() (data dataSource) {
+func (obj *WebReporter) getTotalPerformance() (data dataSource) {
 
 	var eventTime string
 	var processID string
@@ -175,8 +184,6 @@ func (obj *WebReporter) getPerformance() (data dataSource) {
 	details.SetTimeFilter(obj.filter.getData())
 	details.SetOrder("eventTime", "ProcessWID")
 
-	data.columns = make([]string, 1)
-	data.columns[0] = `{"id":"","label":"date","type":"Date"}`
 	data.dataByTime = make(map[time.Time]*dataSourceRow)
 
 	columnByID := make(map[string]int)
@@ -197,10 +204,16 @@ func (obj *WebReporter) getPerformance() (data dataSource) {
 		d.cells[columnByID[processID]] = 10000 / average_response_time
 	}
 
+	data.columns = make([]string, 1+len(columnByID))
+	data.columns[0] = `{"id":"","label":"date","type":"datetime"}`
+	for name, id := range columnByID {
+		data.columns[id+1] = fmt.Sprintf(`{"id":"","label":"%s","type":"number"}`, name)
+	}
+
 	return
 }
 
-func (obj *WebReporter) getProcessPerformanceStatistics(processId string) (data []dataColumn) {
+func (obj *WebReporter) getProcessPerformanceStatistics(processId string) (data dataSource) {
 
 	var processID string
 	var MIN_cpu, AVG_cpu, MAX_cpu float64
@@ -210,6 +223,13 @@ func (obj *WebReporter) getProcessPerformanceStatistics(processId string) (data 
 	var MIN_disk_performance, AVG_disk_performance, MAX_disk_performance float64
 	var MIN_response_time, AVG_response_time, MAX_response_time float64
 	var MIN_average_response_time, AVG_average_response_time, MAX_average_response_time float64
+
+	data.columns = make([]string, 5)
+	data.columns[0] = `{"id":"","label":"Process","type":"string"}`
+	data.columns[1] = `{"id":"","label":"Minimun","type":"number"}`
+	data.columns[2] = `{"id":"","label":"Maximum","type":"number"}`
+	data.columns[3] = `{"id":"","label":"Average","type":"number"}`
+	data.columns[4] = `{"id":"","label":"Show","type":"boolean"}`
 
 	details := obj.storage.SelectQuery("processesPerformance", "processWID",
 		"MIN(cpu)", "AVG(cpu)", "MAX(cpu)",
@@ -235,26 +255,36 @@ func (obj *WebReporter) getProcessPerformanceStatistics(processId string) (data 
 	)
 	details.Next()
 
-	data = make([]dataColumn, 7)
-	data[0] = dataColumn{Name: "cpu", Minimum: MIN_cpu, Average: AVG_cpu, Maximum: MAX_cpu}
-	data[1] = dataColumn{Name: "queue_length", Minimum: MIN_queue_length, Average: AVG_queue_length, Maximum: MAX_queue_length}
-	data[2] = dataColumn{Name: "queue_lengthByCpu", Minimum: MIN_queue_lengthByCpu, Average: AVG_queue_lengthByCpu, Maximum: MAX_queue_lengthByCpu}
-	data[3] = dataColumn{Name: "memory_performance", Minimum: MIN_memory_performance, Average: AVG_memory_performance, Maximum: MAX_memory_performance}
-	data[4] = dataColumn{Name: "disk_performance", Minimum: MIN_disk_performance, Average: AVG_disk_performance, Maximum: MAX_disk_performance}
-	data[5] = dataColumn{Name: "response_time", Minimum: MIN_response_time, Average: AVG_response_time, Maximum: MAX_response_time}
-	data[6] = dataColumn{Name: "average_response_time", Minimum: MIN_average_response_time, Average: AVG_average_response_time, Maximum: MAX_average_response_time}
+	data.rows = make([]string, 7)
+	data.rows[0] = fmt.Sprintf(`{"c":[{"v":"cpu"},{"v":"%g"},{"v":"%g"},{"v":"%g"},{"v":true}]}`, MIN_cpu, AVG_cpu, MAX_cpu)
+	data.rows[1] = fmt.Sprintf(`{"c":[{"v":"queue_length"},{"v":"%g"},{"v":"%g"},{"v":"%g"},{"v":true}]}`, MIN_queue_length, AVG_queue_length, MAX_queue_length)
+	data.rows[2] = fmt.Sprintf(`{"c":[{"v":"queue_lengthByCpu"},{"v":"%g"},{"v":"%g"},{"v":"%g"},{"v":true}]}`, MIN_queue_lengthByCpu, AVG_queue_lengthByCpu, MAX_queue_lengthByCpu)
+	data.rows[3] = fmt.Sprintf(`{"c":[{"v":"memory_performance"},{"v":"%g"},{"v":"%g"},{"v":"%g"},{"v":true}]}`, MIN_memory_performance, AVG_memory_performance, MAX_memory_performance)
+	data.rows[4] = fmt.Sprintf(`{"c":[{"v":"disk_performance"},{"v":"%g"},{"v":"%g"},{"v":"%g"},{"v":true}]}`, MIN_disk_performance, AVG_disk_performance, MAX_disk_performance)
+	data.rows[5] = fmt.Sprintf(`{"c":[{"v":"response_time"},{"v":"%g"},{"v":"%g"},{"v":"%g"},{"v":true}]}`, MIN_response_time, AVG_response_time, MAX_response_time)
+	data.rows[6] = fmt.Sprintf(`{"c":[{"v":"average_response_time"},{"v":"%g"},{"v":"%g"},{"v":"%g"},{"v":true}]}`, MIN_average_response_time, AVG_average_response_time, MAX_average_response_time)
 
 	return
 }
 
-func (obj *WebReporter) getProcessPerformance(processId string) (data []string) {
+func (obj *WebReporter) getProcessPerformance(processId string) (data dataSource) {
 
 	var eventTime string
 	var cpu, queue_length, queue_lengthByCpu float64
 	var memory_performance, disk_performance float64
 	var response_time, average_response_time float64
 
-	data = make([]string, 0)
+	data.columns = make([]string, 8)
+	data.columns[0] = `{"id":"","label":"date","type":"datetime"}`
+	data.columns[1] = `{"id":"","label":"cpu","type":"number"}`
+	data.columns[2] = `{"id":"","label":"queue_length","type":"number"}`
+	data.columns[3] = `{"id":"","label":"queue_lengthByCpu","type":"number"}`
+	data.columns[4] = `{"id":"","label":"memory_performance","type":"number"}`
+	data.columns[5] = `{"id":"","label":"disk_performance","type":"number"}`
+	data.columns[6] = `{"id":"","label":"response_time","type":"number"}`
+	data.columns[7] = `{"id":"","label":"average_response_time","type":"number"}`
+
+	data.dataByTime = make(map[time.Time]*dataSourceRow)
 
 	details := obj.storage.SelectQuery("processesPerformance", "eventTime",
 		"cpu", "queue_length", "queue_lengthByCpu",
@@ -270,12 +300,16 @@ func (obj *WebReporter) getProcessPerformance(processId string) (data []string) 
 		eventTTime, err := time.ParseInLocation("2006-01-02 15:04:05", eventTime[:19], time.Local)
 		checkErr(err)
 
-		data = append(data, fmt.Sprintf("[new Date(%s), %g, %g, %g, %g, %g, %g, %g]",
-			eventTTime.Format("2006, 01, 02, 15, 04, 05"),
-			cpu, queue_length, queue_lengthByCpu,
-			memory_performance, disk_performance,
-			response_time, average_response_time,
-		))
+		d := dataSourceRow{cells: make(map[int]float64)}
+		d.cells[0] = cpu
+		d.cells[1] = queue_length
+		d.cells[2] = queue_lengthByCpu
+		d.cells[3] = memory_performance
+		d.cells[4] = disk_performance
+		d.cells[5] = response_time
+		d.cells[6] = average_response_time
+
+		data.dataByTime[eventTTime] = &d
 	}
 
 	return

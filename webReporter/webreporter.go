@@ -43,10 +43,7 @@ func New(storage *storage.Storage, isCancelChan chan bool) *WebReporter {
 
 	obj.storage = storage
 	obj.logger = log.New(os.Stdout, "http: ", log.LstdFlags)
-	obj.srv = http.Server{
-		Handler: logging(obj.logger)(obj.getHandlers()),
-		Addr:    fmt.Sprintf(":%d", obj.port),
-	}
+
 	obj.templates, err = template.ParseFS(templateContent, "templates/*.html", "templates/*.gohtml")
 	checkErr(err)
 
@@ -54,8 +51,12 @@ func New(storage *storage.Storage, isCancelChan chan bool) *WebReporter {
 	obj.title = details.Title
 	obj.filter = getDataFilter(obj.templates.Lookup("dataFilter.gohtml"))
 	obj.filter.setTime(details.FirstEventTime, details.LastEventTime)
-
 	obj.cancelChan = isCancelChan
+
+	obj.srv = http.Server{
+		Handler: obj.getHandlers(),
+		Addr:    fmt.Sprintf(":%d", obj.port),
+	}
 
 	return obj
 }
@@ -92,7 +93,7 @@ func (obj *WebReporter) Start() error {
 
 ///////////////////////////////////////////////////////////////////////////////
 
-func (obj *WebReporter) getHandlers() *http.ServeMux {
+func (obj *WebReporter) getHandlers() http.Handler {
 
 	sm := http.NewServeMux()
 
@@ -108,7 +109,7 @@ func (obj *WebReporter) getHandlers() *http.ServeMux {
 	sm.HandleFunc("/headers", obj.headers)
 
 	//logger.Printf("Received request: %s %s from %s", r.Method, r.URL.Path, r.RemoteAddr)
-	return sm
+	return logging(obj.logger)(sm)
 }
 
 func (obj *WebReporter) headers(w http.ResponseWriter, req *http.Request) {

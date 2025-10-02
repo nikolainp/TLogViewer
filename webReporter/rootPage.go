@@ -74,7 +74,7 @@ func (obj *WebReporter) getProcesses() (data dataSource) {
 	data.columns[2] = `{"id":"","label":"IP","type":"string"}`
 	data.columns[3] = `{"id":"","label":"Port","type":"string"}`
 	data.columns[4] = `{"id":"","label":"First event","type":"datetime"}`
-	data.columns[5] = `{"id":"","label":"Last event","type":"datetime"`
+	data.columns[5] = `{"id":"","label":"Last event","type":"datetime"}`
 
 	data.rows = make([]string, 0)
 

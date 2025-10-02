@@ -38,7 +38,7 @@ func (obj *WebReporter) dataSource(w http.ResponseWriter, req *http.Request) {
 	toDataRows := func(data dataSource) (result []string) {
 
 		maxValues := 1000
-		columns := len(data.columns)
+		columns := len(data.columns) - 1
 		maxRows := 1 + maxValues/columns
 
 		result = make([]string, 0, maxRows)
@@ -56,8 +56,9 @@ func (obj *WebReporter) dataSource(w http.ResponseWriter, req *http.Request) {
 		duration := time.Duration(finishTime.Sub(beginTime).Seconds()/float64(maxRows)) * time.Second
 
 		beginTime = beginTime.Add(duration)
-		dataRow := make(map[int]float64)
-		dataCount := make(map[int]int)
+		dataRow := make([]float64, columns)
+		dataCount := make([]float64, columns)
+		dataStr := make([]string, columns)
 		for i := range keys {
 
 			if keys[i].Before(beginTime) {
@@ -66,20 +67,21 @@ func (obj *WebReporter) dataSource(w http.ResponseWriter, req *http.Request) {
 					dataCount[j] = dataCount[j] + 1
 				}
 			} else {
-				beginTime = beginTime.Add(duration)
-
-				
-				for  j := 0; j < len(data.columns); j++{
-					if d, exists := dataRow[j]; exists {
-						
+				for i := 0; i < len(dataRow); i++ {
+					if dataCount[i] == 0 {
+						dataStr[i] = `null`
 					} else {
-
+						dataStr[i] = fmt.Sprintf("%.2f", dataRow[i]/dataCount[i])
 					}
+					dataRow[i] = 0
+					dataCount[i] = 0
 				}
-				result = append(result, "")
-
-				dataRow = make(map[int]float64)
-				dataCount = make(map[int]int)
+				result = append(result, fmt.Sprintf(
+					`{"c":[{"v":"Date(%s)"},{"v":%s}]}`,
+					beginTime.Format("2006, 01, 02, 15, 04, 05"),
+					strings.Join(dataStr, `},{"v":`),
+				))
+				beginTime = beginTime.Add(duration)
 			}
 		}
 
@@ -94,11 +96,10 @@ func (obj *WebReporter) dataSource(w http.ResponseWriter, req *http.Request) {
 		processID := req.Header.Get("ID")
 		switch source {
 		case "statistics.json":
-			data := obj.getPerformanceStatistics()
+			data := obj.getPerformanceStatistics(processID)
 			js = fmt.Sprintf(js, strings.Join(data.columns, ","), strings.Join(data.rows, ","))
 		case "data.json":
-			js = processID
-			data := obj.getPerformance()
+			data := obj.getPerformance(processID)
 			js = fmt.Sprintf(js, strings.Join(data.columns, ","),
 				strings.Join(toDataRows(data), ","))
 		}
