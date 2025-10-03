@@ -64,10 +64,10 @@ func (obj *WebReporter) performance(w http.ResponseWriter, req *http.Request) {
 	checkErr(err)
 }
 
-type dataColumn struct {
-	Name                      string
-	Minimum, Average, Maximum float64
-}
+// type dataColumn struct {
+// 	Name                      string
+// 	Minimum, Average, Maximum float64
+// }
 
 func (obj *WebReporter) getProcess(processId string) (data process) {
 

@@ -49,7 +49,7 @@ func New(storage *storage.Storage, isCancelChan chan bool) *WebReporter {
 
 	details := obj.getRootDetails()
 	obj.title = details.Title
-	obj.filter = getDataFilter(obj.templates.Lookup("dataFilter.gohtml"))
+	obj.filter = getDataFilter(obj.templates.Lookup("dataFilter.html"))
 	obj.filter.setTime(details.FirstEventTime, details.LastEventTime)
 	obj.cancelChan = isCancelChan
 

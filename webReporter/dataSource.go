@@ -92,6 +92,9 @@ func (obj *WebReporter) dataSource(w http.ResponseWriter, req *http.Request) {
 	case "root":
 		data := obj.getProcesses()
 		js = fmt.Sprintf(js, strings.Join(data.columns, ","), strings.Join(data.rows, ","))
+	case "processes":
+		data := obj.getProcessesLiveTime()
+		js = fmt.Sprintf(js, strings.Join(data.columns, ","), strings.Join(data.rows, ","))
 	case "performance":
 		processID := req.Header.Get("ID")
 		switch source {
