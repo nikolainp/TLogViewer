@@ -37,20 +37,20 @@
       setColumnColors(columns);
       drawTable(table, columns)
 
-      // google.visualization.events.addListener(table, 'select', function () {
-      //   var row = table.getSelection()[0].row;
-      //   var value = columns.getValue(row, 4);
+      google.visualization.events.addListener(table, 'select', function () {
+        var row = table.getSelection()[0].row;
+        var value = columns.getValue(row, 4);
 
-      //   value = !value;
-      //   columns.setValue(row, 4, value);
-      //   if (value) {
-      //     chart.showDataColumns(row)
-      //   } else {
-      //     chart.hideDataColumns(row)
-      //   }
+        value = !value;
+        columns.setValue(row, 4, value);
+        if (value) {
+          chart.showDataColumns(row)
+        } else {
+          chart.hideDataColumns(row)
+        }
 
-      //   drawTable(table, columns);
-      // });
+        drawTable(table, columns);
+      });
 
     }
 

@@ -3,6 +3,7 @@ package webreporter
 import (
 	"fmt"
 	"net/http"
+	"text/template"
 	"time"
 )
 
@@ -19,8 +20,6 @@ func (obj *WebReporter) performance(w http.ResponseWriter, req *http.Request) {
 
 		ProcessId string
 		Process   string
-		// Columns  []dataColumn
-		// DataRows []string
 	}{}
 
 	toProcessList := func(data map[string]process) (res map[string]string) {
@@ -44,11 +43,11 @@ func (obj *WebReporter) performance(w http.ResponseWriter, req *http.Request) {
 		)
 	}
 
-	processList := obj.getWorkProcesses()
+	obj.processList = obj.getWorkProcesses()
 	data.Title = obj.title
 	data.DataFilter = obj.filter.getContent(req.URL.String())
 	data.Navigation = obj.navigator.getMainMenu()
-	data.ProcessList = obj.navigator.getSubMenu(urlString, toProcessList(processList))
+	data.ProcessList = obj.navigator.getSubMenu(urlString, toProcessList(obj.processList))
 
 	data.ProcessId = req.PathValue("id")
 	if data.ProcessId == "" {
@@ -64,26 +63,23 @@ func (obj *WebReporter) performance(w http.ResponseWriter, req *http.Request) {
 	checkErr(err)
 }
 
-// type dataColumn struct {
-// 	Name                      string
-// 	Minimum, Average, Maximum float64
+///////////////////////////////////////////////////////////////////////////////
+
+// func (obj *WebReporter) getProcess(processId string) (data process) {
+
+// 	details := obj.storage.SelectQuery("processes")
+// 	//details.SetTimeFilter(obj.filter.getData())
+// 	details.SetFilter("processID = ?", processId)
+// 	details.Next(
+// 		&data.Name, &data.Catalog, &data.Process,
+// 		&data.ProcessID, &data.ProcessType,
+// 		&data.Pid, &data.Port, &data.UID,
+// 		&data.ServerName, &data.IP,
+// 		&data.FirstEventTime, &data.LastEventTime)
+// 	details.Next()
+
+// 	return
 // }
-
-func (obj *WebReporter) getProcess(processId string) (data process) {
-
-	details := obj.storage.SelectQuery("processes")
-	//details.SetTimeFilter(obj.filter.getData())
-	details.SetFilter("processID = ?", processId)
-	details.Next(
-		&data.Name, &data.Catalog, &data.Process,
-		&data.ProcessID, &data.ProcessType,
-		&data.Pid, &data.Port, &data.UID,
-		&data.ServerName, &data.IP,
-		&data.FirstEventTime, &data.LastEventTime)
-	details.Next()
-
-	return
-}
 
 func (obj *WebReporter) getWorkProcesses() (data map[string]process) {
 
@@ -122,6 +118,8 @@ func (obj *WebReporter) getWorkProcess(processId string) (data process) {
 
 	return
 }
+
+///////////////////////////////////////////////////////////////////////////////
 
 func (obj *WebReporter) getPerformanceStatistics(processId string) (data dataSource) {
 	if processId == "" {
@@ -163,7 +161,7 @@ func (obj *WebReporter) getTotalPerformanceStatistics() (data dataSource) {
 	) {
 		data.rows = append(data.rows, fmt.Sprintf(
 			`{"c":[{"v":"%s"},{"v":"%g"},{"v":"%g"},{"v":"%g"},{"v":true}]}`,
-			processID,
+			template.JSEscapeString(obj.processList[processID].Name),
 			10000/MIN_average_response_time,
 			10000/AVG_average_response_time,
 			10000/MAX_average_response_time,
@@ -207,7 +205,8 @@ func (obj *WebReporter) getTotalPerformance() (data dataSource) {
 	data.columns = make([]string, 1+len(columnByID))
 	data.columns[0] = `{"id":"","label":"date","type":"datetime"}`
 	for name, id := range columnByID {
-		data.columns[id+1] = fmt.Sprintf(`{"id":"","label":"%s","type":"number"}`, name)
+		data.columns[id+1] = fmt.Sprintf(`{"id":"","label":"%s","type":"number"}`,
+			obj.processList[name].Name)
 	}
 
 	return

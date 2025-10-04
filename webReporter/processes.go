@@ -9,26 +9,6 @@ import (
 
 func (obj *WebReporter) processes(w http.ResponseWriter, req *http.Request) {
 
-	// toDataRows := func(data map[string]process) []string {
-
-	// 	rows := make([]string, 0, len(data))
-
-	// 	for i := range data {
-	// 		firstEventTime := obj.filter.getStartTime(data[i].FirstEventTime)
-	// 		lastEventTime := obj.filter.getFinishTime(data[i].LastEventTime)
-
-	// 		rows = append(rows, fmt.Sprintf("['%s', '%s', '%s', new Date(%s), new Date(%s), null, 100, null]",
-	// 			data[i].ProcessID,
-	// 			template.JSEscapeString(data[i].Name),
-	// 			data[i].Catalog,
-	// 			firstEventTime.Format("2006, 01, 02, 15, 04, 05"),
-	// 			lastEventTime.Format("2006, 01, 02, 15, 04, 05"),
-	// 		))
-	// 	}
-
-	// 	return rows
-	// }
-
 	data := struct {
 		Title      string
 		DataFilter string
@@ -83,7 +63,7 @@ func (obj *WebReporter) getProcessesLiveTime() (data dataSource) {
 	details.SetTimeFilter(obj.filter.getData())
 	details.SetOrder("Name")
 
-	orderID := 0
+	// orderID := 0
 	for details.Next(
 		&elem.Name, &elem.Catalog, &elem.Process,
 		&elem.ProcessID, &elem.ProcessType,
@@ -91,7 +71,7 @@ func (obj *WebReporter) getProcessesLiveTime() (data dataSource) {
 		&elem.ServerName, &elem.IP,
 		&elem.FirstEventTime, &elem.LastEventTime) {
 
-		elem.order = orderID
+		// elem.order = orderID
 		///		data[elem.ProcessID] = elem
 
 		data.rows = append(data.rows, fmt.Sprintf(
@@ -103,7 +83,7 @@ func (obj *WebReporter) getProcessesLiveTime() (data dataSource) {
 			elem.LastEventTime.Format("2006, 01, 02, 15, 04, 05"),
 		))
 
-		orderID++
+		// orderID++
 	}
 
 	return

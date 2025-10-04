@@ -23,6 +23,8 @@ type WebReporter struct {
 	filter    *dataFilter
 	navigator navigation
 
+	processList map[string]process
+
 	port int
 
 	cancelChan chan bool
@@ -44,7 +46,7 @@ func New(storage *storage.Storage, isCancelChan chan bool) *WebReporter {
 	obj.storage = storage
 	obj.logger = log.New(os.Stdout, "http: ", log.LstdFlags)
 
-	obj.templates, err = template.ParseFS(templateContent, "templates/*.html", "templates/*.gohtml")
+	obj.templates, err = template.ParseFS(templateContent, "templates/*.html")
 	checkErr(err)
 
 	details := obj.getRootDetails()
