@@ -106,6 +106,17 @@ func (obj *WebReporter) dataSource(w http.ResponseWriter, req *http.Request) {
 			js = fmt.Sprintf(js, strings.Join(data.columns, ","),
 				strings.Join(toDataRows(data), ","))
 		}
+	case "servercontexts":
+		processID := req.Header.Get("ID")
+		switch source {
+		case "statistics.json":
+			data := obj.getServerContextsStatistics(processID)
+			js = fmt.Sprintf(js, strings.Join(data.columns, ","), strings.Join(data.rows, ","))
+		case "data.json":
+			data := obj.getServerContexts(processID)
+			js = fmt.Sprintf(js, strings.Join(data.columns, ","),
+				strings.Join(toDataRows(data), ","))
+		}
 	}
 
 	w.Header().Set("Content-Type", "application/json")

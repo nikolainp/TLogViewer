@@ -103,6 +103,8 @@ func (obj *WebReporter) getHandlers() http.Handler {
 	sm.HandleFunc("/processes", obj.processes)
 	sm.HandleFunc("/performance", obj.performance)
 	sm.HandleFunc("/performance/{id}", obj.performance)
+	sm.HandleFunc("/servercontexts", obj.servercontexts)
+	sm.HandleFunc("/servercontexts/{id}", obj.servercontexts)
 
 	sm.HandleFunc("/datafilter", obj.filter.setContext)
 	sm.HandleFunc("/data/{section}/{source...}", obj.dataSource)

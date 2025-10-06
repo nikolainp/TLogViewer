@@ -58,6 +58,7 @@ const navigationMainMenuTemplate = `
 			<li><a href="/">главная</a></li>
 			<li><a href="/processes">процессы</a></li>
 			<li><a href="/performance">производительность</a></li> 
+			<li><a href="/servercontexts">серверные контексты</a></li> 
 		</ul>
 	</nav>
 `

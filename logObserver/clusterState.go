@@ -364,12 +364,6 @@ func (obj *clusterProcess) addEvent(data event) {
 			default:
 				fmt.Printf("func = %s", name)
 			}
-			// if isIPAddress(address) {
-			// 	if strings.Compare(address, "[::1]") != 0 &&
-			// 		strings.Compare(address, "127.0.0.1") != 0 {
-			// 		obj.ip[address] = true
-			// 	}
-			// }
 		}
 
 	}

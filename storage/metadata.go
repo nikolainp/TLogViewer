@@ -164,7 +164,7 @@ func (obj *implMetaData) init() {
 		"processesPerformance": {name: "processesPerformance",
 			columns: []metaColumn{
 				{name: "processWID", datatype: "NUMBER"},
-				{name: "eventTime", datatype: "DATATIME", isTimeFrom: true, isTimeTo: true},
+				{name: "eventTime", datatype: "DATETIME", isTimeFrom: true, isTimeTo: true},
 				{name: "cpu", datatype: "NUMBER"},
 				{name: "queue_length", datatype: "NUMBER"},
 				{name: "queue_lengthByCpu", datatype: "NUMBER"},
@@ -174,7 +174,7 @@ func (obj *implMetaData) init() {
 				{name: "average_response_time", datatype: "REAL"},
 			},
 		},
-		"serverContexts": {name: "serverСontexts",
+		"serverContexts": {name: "serverContexts",
 			columns: []metaColumn{
 				{name: "processID", datatype: "NUMBER"},
 				{name: "contextID", datatype: "TEXT"}, {name: "name", datatype: "TEXT"},
